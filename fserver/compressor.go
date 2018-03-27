@@ -230,16 +230,17 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 			return false
 		}
 
+		nDataLen := len(bytesData)
 		for {
 			hdr := new(tar.Header) // Create tar header
 			//hdr, err := tar.FileInfoHeader(oFileInfo, "")
 			hdr.Name = pILoader.GenFilePath(sRecursivePath)
 			bData, nDate, nOffset := pILoader.LoadFromFile(bytesData[nIndex:])
-			if len(bData) <= 0 {
+			nIndex += nOffset
+			if nIndex >= nDataLen {
 				break
 			}
 
-			nIndex += nOffset
 			pTarWriter := pILoader.GrapWriter(pILoader.GenFilePath(sDestFile), nDate, sSrcFile)
 			if nil == pTarWriter {
 				return false
@@ -250,6 +251,7 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 			hdr.ModTime = oFileInfo.ModTime()
 			err = pTarWriter.WriteHeader(hdr) // Write hander
 			if err != nil {
+				log.Println("[INF] Compressor.compressFile() : cannot write tar header 2 file :", sDestFile, err.Error())
 				return false
 			}
 
@@ -382,6 +384,9 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 	var nReturnDate int = -100
 	var objToday time.Time = time.Now()
 	var rstr string = ""
+	var lstPeriods = [4]int{103000, 130000, 140000, 150000}
+	var nLastIndex int = -1
+	var nCurIndex int = 0
 	var objMin60 struct {
 		Date         int     // date
 		Time         int     // time
@@ -413,7 +418,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		objRecordDate := time.Date(objMin60.Date/10000, time.Month(objMin60.Date%10000/100), objMin60.Date%100, 21, 6, 9, 0, time.Local)
 		subHours := objToday.Sub(objRecordDate)
 		nDays := subHours.Hours() / 24
-		if nDays > 366 {
+		if nDays > 366*3 {
 			continue
 		}
 
@@ -421,51 +426,65 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 			nReturnDate = objMin60.Date
 		}
 
-		if nReturnDate != objMin60.Date {
-			return []byte(rstr), nReturnDate, nOffset
-		}
-
 		// cal. 60 minutes k-lines
 		nCurTime, _ := strconv.Atoi(lstRecords[1])
-		nCurTime /= 10000000
+		nCurTime /= 1000
 		objMin60.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
 		objMin60.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
 		objMin60.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
 
-		if objMin60.Time == 0 {
-			objMin60.Time = (nCurTime + 1) * 10000
-			objMin60.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
-			objMin60.High, _ = strconv.ParseFloat(lstRecords[3], 64)
-			objMin60.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
-			objMin60.Amount, _ = strconv.ParseFloat(lstRecords[7], 64)
-			objMin60.Volume, _ = strconv.ParseInt(lstRecords[8], 10, 64)
-			objMin60.OpenInterest, _ = strconv.ParseInt(lstRecords[9], 10, 64)
-			objMin60.NumTrades, _ = strconv.ParseInt(lstRecords[10], 10, 64)
+		nPeriodTime := 0
+		if nCurTime >= 63000 && nCurTime < 103000 {
+			nCurIndex = 0
+			nPeriodTime = 103000
+		} else if nCurTime >= 103000 && nCurTime < 130000 {
+			nCurIndex = 1
+			nPeriodTime = 130000
+		} else if nCurTime >= 130000 && nCurTime < 140000 {
+			nCurIndex = 2
+			nPeriodTime = 140000
+		} else if nCurTime >= 140000 && nCurTime <= 160000 {
+			nCurIndex = 3
+			nPeriodTime = 150000
+		}
+		/////////log.Println("--->", i, nCurTime, objMin60.Time)
+		if nReturnDate != objMin60.Date {
 			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+			return []byte(rstr), nReturnDate, nOffset
 		}
 
-		if objMin60.Time <= nCurTime*10000 { // begin
-			//if 0 != i {
-			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
-			//}
+		if nLastIndex != nCurIndex {
+			nLastIndex = nCurIndex
 
-			objMin60.Time = (nCurTime + 1) * 10000
-			objMin60.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
-			objMin60.High, _ = strconv.ParseFloat(lstRecords[3], 64)
-			objMin60.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
+			if 0 == objMin60.Time {
+				objMin60.Time = lstPeriods[0]
+				if nCurIndex > 0 {
+					objMin60.Time = lstPeriods[nCurIndex-1]
+				}
+			}
+
+			if nCurIndex > 0 {
+				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+			}
+
+			objMin60.Time = nPeriodTime
+			objMin60.Open = objMin60.Close
+			objMin60.High = objMin60.Close
+			objMin60.Low = objMin60.Close
 			objMin60.Amount, _ = strconv.ParseFloat(lstRecords[7], 64)
 			objMin60.Volume, _ = strconv.ParseInt(lstRecords[8], 10, 64)
 			objMin60.OpenInterest, _ = strconv.ParseInt(lstRecords[9], 10, 64)
 			objMin60.NumTrades, _ = strconv.ParseInt(lstRecords[10], 10, 64)
 		} else {
-			nHigh, _ := strconv.ParseFloat(lstRecords[3], 64)
-			nLow, _ := strconv.ParseFloat(lstRecords[4], 64)
-			if nHigh > objMin60.High {
-				objMin60.High = nHigh
+			objMin60.Time = nPeriodTime
+			if objMin60.Close > objMin60.High {
+				objMin60.High = objMin60.Close
 			}
-			if nLow > objMin60.Low {
-				objMin60.Low = nLow
+
+			if objMin60.Close < objMin60.Low {
+				objMin60.Low = objMin60.Close
 			}
+
 			nAmount, _ := strconv.ParseFloat(lstRecords[7], 64)
 			objMin60.Amount += nAmount
 			nVolume, _ := strconv.ParseInt(lstRecords[8], 10, 64)
@@ -477,7 +496,9 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		}
 
 		if i == (nCount - 1) {
-			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+			if objMin60.Time > 0 {
+				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+			}
 		}
 	}
 
