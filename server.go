@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./fserver"
 	"flag"
 	"log"
 	"os"
@@ -9,8 +10,8 @@ import (
 var (
 	sIP      string // Server IP
 	nPort    int    // Server Port
-	bDumpLog bool   // switch 4 log dump
-	sLogFile string // log file path
+	bDumpLog bool   // Switch 4 log dump
+	sLogFile string // Log file path
 )
 
 func init() {
@@ -27,14 +28,18 @@ func main() {
 	if true == bDumpLog {
 		oLogFile, oLogErr := os.OpenFile(sLogFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 		if oLogErr != nil {
-			log.Fatal("main() : an error occur while creating log file ! ", sLogFile)
+			log.Fatal("[ERR] main() : an error occur while creating log file ! ", sLogFile)
 			os.Exit(1)
 		}
 
 		log.SetOutput(oLogFile)
 	}
-	log.Println("[Begin] ##################################")
+
+	//////////////// Active File Sync Server
+	log.Println("[INF] [Begin] ##################################")
 	log.Println("[INF] Server IP:port -->", sIP, nPort)
 
-	log.Println("[ End ] ##################################")
+	fserver.RunServer()
+
+	log.Println("[INF] [ End ] ##################################")
 }
