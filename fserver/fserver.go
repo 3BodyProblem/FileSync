@@ -7,6 +7,7 @@ package fserver
 
 import (
 	"./github.com/astaxie/beego/session"
+	"archive/zip"
 	"encoding/xml"
 	"fmt"
 	"log"
@@ -29,6 +30,7 @@ type FileSyncServer struct {
 	ServerHost string
 	Account    string
 	Password   string
+	httpserver *http.Server
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -38,6 +40,7 @@ func (pSelf *FileSyncServer) RunServer() {
 	log.Println("[INF] Server IP:Port -->", pSelf.ServerHost)
 	http.HandleFunc("/", pSelf.handleDefault)
 	http.HandleFunc("/login", pSelf.handleLogin)
+	http.HandleFunc("/file", pSelf.handleDownload)
 
 	// Active the http server
 	log.Println("[INF] Server is available......")
@@ -46,7 +49,7 @@ func (pSelf *FileSyncServer) RunServer() {
 }
 
 ///////////////////////////////////// [InnerMethod]
-// Authenticate Session
+// Authenticate User's Session
 func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *http.Request) bool {
 	req.ParseForm()
 	objSession, _ := globalSessions.SessionStart(resp, req)
@@ -54,15 +57,36 @@ func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *
 	sUNameInSS := objSession.Get("username")
 
 	if sUNameInSS != nil {
+		log.Println("[INF] [AuthenticateUser] ---> [OK]: ", sUNameInSS)
 		return true
 	} else {
+		var xmlRes struct {
+			XMLName xml.Name `xml:"authenticate"`
+			Result  struct {
+				XMLName xml.Name `xml:"result"`
+				Status  string   `xml:"status,attr"`
+				Desc    string   `xml:"desc,attr"`
+			}
+		} // Build Response Xml Structure
+
+		xmlRes.Result.Status = "failure"
+		xmlRes.Result.Desc = "[WARNING] Oops! user session has expired."
+		log.Println("[INF] [AuthenticateUser] ---> [FAILURE]")
+
+		// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
+		if sResponse, err := xml.Marshal(&xmlRes); err != nil {
+			fmt.Fprintf(resp, "%s%s", xml.Header, err.Error())
+		} else {
+			fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
+		}
+
 		return false
 	}
 }
 
 // [Event] default
 func (pSelf *FileSyncServer) handleDefault(resp http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(resp, "Server Of File Sync Program.\n\nUsage Of Action:\n\n127.0.0.1/login?account=xx&password=xxx\n")
+	fmt.Fprintf(resp, "Server Of File Sync Program.\n\nUsage Of Action:\n\nhttp://127.0.0.1/login?account=xx&password=xxx\n\nhttp://127.0.0.1/file?uri=xxx.zip\n\n")
 }
 
 // [Event] login
@@ -87,10 +111,11 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 	if sUNameInSS != nil {
 		xmlRes.Result.Status = "success"
 		xmlRes.Result.Desc = "[INFO] welcome again"
+		log.Println("[INF] HttpAction[Relogin], [OK]: ", sUNameInSS)
 	} else {
 		// Fetch Aruguments ( LoginName && LoginPassword )
 		xmlRes.Result.Status = "failure"
-		xmlRes.Result.Desc = "[WARNING] Oops! account or password r all incorrect."
+		xmlRes.Result.Desc = "[WARNING] Oops! account or password r incorrect."
 		if len(req.Form["account"]) > 0 {
 			sAccount = req.Form["account"][0]
 		}
@@ -103,7 +128,10 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 		if pSelf.Account == sAccount && pSelf.Password == sPswd {
 			objSession.Set("username", sAccount)
 			xmlRes.Result.Status = "success"
-			xmlRes.Result.Desc = "[INFO] Good! account and password r correct."
+			xmlRes.Result.Desc = "[INFO] Good! account and password r all correct."
+			log.Println("[INF] HttpAction[Login], [OK]: ", sAccount)
+		} else {
+			log.Println("[INF] HttpAction[Login], [FAILED]: ", sAccount)
 		}
 	}
 
@@ -113,4 +141,48 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 	} else {
 		fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 	}
+}
+
+// [Event] Download
+func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.Request) {
+	var sZipName string = ""
+
+	if pSelf.authenticateSession(resp, req) == false {
+		return
+	}
+
+	// Initialize Arguments
+	req.ParseForm()
+
+	// Download Zip File
+	if len(req.Form["uri"]) > 0 {
+		sZipName = req.Form["uri"][0]
+		resp.Header().Set("Content-Type", "application/zip")
+		resp.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", sZipName))
+
+		objZipWriter := zip.NewWriter(resp)
+		defer objZipWriter.Close()
+
+	} else {
+		var xmlRes struct {
+			XMLName xml.Name `xml:"download"`
+			Result  struct {
+				XMLName xml.Name `xml:"result"`
+				Status  string   `xml:"status,attr"`
+				Desc    string   `xml:"desc,attr"`
+			}
+		} // Build Response Xml Structure
+
+		xmlRes.Result.Status = "failure"
+		xmlRes.Result.Desc = "[WARNING] Oops! miss argument, GET: uri=''"
+		log.Println("[INF] [Download File] ---> [FAILURE], miss argument, GET: uri=''")
+
+		// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
+		if sResponse, err := xml.Marshal(&xmlRes); err != nil {
+			fmt.Fprintf(resp, "%s%s", xml.Header, err.Error())
+		} else {
+			fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
+		}
+	}
+
 }
