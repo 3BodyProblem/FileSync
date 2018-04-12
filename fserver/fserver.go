@@ -85,7 +85,7 @@ func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *
 
 // [Event] default
 func (pSelf *FileSyncServer) handleDefault(resp http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(resp, "Server Of File Sync Program.\n\nUsage Of Action:\n\nhttp://127.0.0.1/login?account=xx&password=xxx\n\nhttp://127.0.0.1/get?uri=xxx.zip\n\nhttp://127.0.0.1/table\n\n")
+	fmt.Fprintf(resp, "Server Of File Sync Program.\n\nUsage Of Action:\n\nhttp://127.0.0.1/login?account=xx&password=xxx\n\nhttp://127.0.0.1/get?uri=xxx.zip\n\nhttp://127.0.0.1/list\n\n")
 }
 
 // [Event] login
@@ -204,4 +204,5 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
+	fmt.Fprintf(resp, "list")
 }
