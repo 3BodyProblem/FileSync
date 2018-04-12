@@ -35,17 +35,16 @@ type FileSyncServer struct {
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Server
 func (pSelf *FileSyncServer) RunServer() {
-	// Create a http server [example: http.Handle("/", http.FileServer(http.Dir("./"))]
-	log.Println("[INF] FileSyncServer.RunServer() : Server IP:Port -->", pSelf.ServerHost)
+	// Create a http server && Register Http Event
 	http.HandleFunc("/", pSelf.handleDefault)
 	http.HandleFunc("/login", pSelf.handleLogin)
 	http.HandleFunc("/get", pSelf.handleDownload)
 	http.HandleFunc("/list", pSelf.handleList)
 
 	// Active the http server
-	log.Println("[INF] FileSyncServer.RunServer() : Server is available......")
+	log.Println("[INF] FileSyncServer.RunServer() : Server is available [", pSelf.ServerHost, "] .........")
 	http.ListenAndServe(pSelf.ServerHost, nil)
-	log.Println("[INF] FileSyncServer.RunServer() : Server has halted......")
+	log.Println("[INF] FileSyncServer.RunServer() : Server has halted.........")
 }
 
 ///////////////////////////////////// [InnerMethod]

@@ -55,12 +55,11 @@ func main() {
 	log.Println("[INF] [Begin] ##################################")
 
 	objFileScheduler := &fserver.FileScheduler{XmlCfgPath: sXmlCfg}
-	objSyncSvr := &fserver.FileSyncServer{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword}
-
-	if objFileScheduler.RunServer() == false {
+	if objFileScheduler.Active() == false {
 		log.Fatal("[ERR] main() : a fatal error occur while initialize file scheduler engine ! ")
 	}
 
+	objSyncSvr := &fserver.FileSyncServer{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword}
 	objSyncSvr.RunServer()
 
 	log.Println("[INF] [ End ] ##################################")
