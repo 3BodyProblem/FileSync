@@ -20,7 +20,7 @@ var (
 // Package Initialization
 func init() {
 	// @Note: Initialize Session Manager 4 Web Server && Active Its' Garbage Collection Routine
-	globalSessions, _ = session.NewManager("memory", &session.ManagerConfig{CookieName: "FileSyncSSID", EnableSetCookie: true, Gclifetime: 3600, Maxlifetime: 3600, Secure: false, CookieLifeTime: 3600, ProviderConfig: ""})
+	globalSessions, _ = session.NewManager("memory", &session.ManagerConfig{CookieName: "FileSyncSSID", EnableSetCookie: true, Gclifetime: 3600 * 10, Maxlifetime: 3600 * 10, Secure: false, CookieLifeTime: 3600 * 10, ProviderConfig: ""})
 	go globalSessions.GC()
 }
 
@@ -31,7 +31,8 @@ type FileSyncServer struct {
 	Password   string
 }
 
-// Active HTTP Server
+///////////////////////////////////// [OutterMethod]
+//  Active HTTP Server
 func (pSelf *FileSyncServer) RunServer() {
 	// Create a http server [example: http.Handle("/", http.FileServer(http.Dir("./"))]
 	log.Println("[INF] Server IP:Port -->", pSelf.ServerHost)
@@ -44,13 +45,27 @@ func (pSelf *FileSyncServer) RunServer() {
 	log.Println("[INF] Server has halted......")
 }
 
-///////////////////////////////////// Net Event Handler
-// event: default
+///////////////////////////////////// [InnerMethod]
+// Authenticate Session
+func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *http.Request) bool {
+	req.ParseForm()
+	objSession, _ := globalSessions.SessionStart(resp, req)
+	defer objSession.SessionRelease(resp)
+	sUNameInSS := objSession.Get("username")
+
+	if sUNameInSS != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+// [Event] default
 func (pSelf *FileSyncServer) handleDefault(resp http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(resp, "Server Of File Sync Program.\n\nUsage Of Action:\n\n127.0.0.1/login?account=xx&password=xxx\n")
 }
 
-// event: login
+// [Event] login
 func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Request) {
 	var sAccount, sPswd string // LoginName && LoginPassword
 	var xmlRes struct {
@@ -58,22 +73,24 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 		Result  struct {
 			XMLName xml.Name `xml:"result"`
 			Status  string   `xml:"status,attr"`
+			Desc    string   `xml:"desc,attr"`
 		}
 	} // Build Response Xml Structure
 
 	// Initialize Arguments
 	req.ParseForm()
-	objSession, err := globalSessions.SessionStart(resp, req)
+	objSession, _ := globalSessions.SessionStart(resp, req)
 	defer objSession.SessionRelease(resp)
+	sUNameInSS := objSession.Get("username")
 
 	// Check Login Status
-	if err == nil {
-		username := objSession.Get("username")
-		fmt.Println("relogin", username)
+	if sUNameInSS != nil {
 		xmlRes.Result.Status = "success"
+		xmlRes.Result.Desc = "[INFO] welcome again"
 	} else {
 		// Fetch Aruguments ( LoginName && LoginPassword )
 		xmlRes.Result.Status = "failure"
+		xmlRes.Result.Desc = "[WARNING] Oops! account or password r all incorrect."
 		if len(req.Form["account"]) > 0 {
 			sAccount = req.Form["account"][0]
 		}
@@ -86,6 +103,7 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 		if pSelf.Account == sAccount && pSelf.Password == sPswd {
 			objSession.Set("username", sAccount)
 			xmlRes.Result.Status = "success"
+			xmlRes.Result.Desc = "[INFO] Good! account and password r correct."
 		}
 	}
 
