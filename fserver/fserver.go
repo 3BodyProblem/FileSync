@@ -40,7 +40,8 @@ func (pSelf *FileSyncServer) RunServer() {
 	log.Println("[INF] Server IP:Port -->", pSelf.ServerHost)
 	http.HandleFunc("/", pSelf.handleDefault)
 	http.HandleFunc("/login", pSelf.handleLogin)
-	http.HandleFunc("/file", pSelf.handleDownload)
+	http.HandleFunc("/get", pSelf.handleDownload)
+	http.HandleFunc("/list", pSelf.handleList)
 
 	// Active the http server
 	log.Println("[INF] Server is available......")
@@ -86,7 +87,7 @@ func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *
 
 // [Event] default
 func (pSelf *FileSyncServer) handleDefault(resp http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(resp, "Server Of File Sync Program.\n\nUsage Of Action:\n\nhttp://127.0.0.1/login?account=xx&password=xxx\n\nhttp://127.0.0.1/file?uri=xxx.zip\n\n")
+	fmt.Fprintf(resp, "Server Of File Sync Program.\n\nUsage Of Action:\n\nhttp://127.0.0.1/login?account=xx&password=xxx\n\nhttp://127.0.0.1/get?uri=xxx.zip\n\nhttp://127.0.0.1/table\n\n")
 }
 
 // [Event] login
@@ -163,6 +164,18 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 		objZipWriter := zip.NewWriter(resp)
 		defer objZipWriter.Close()
 
+		/*
+		   for i := 0; i < 5; i++ {
+		       f, err := zipW.Create(strconv.Itoa(i) + ".txt")
+		       if err != nil {
+		           return err
+		       }
+		       _, err = f.Write([]byte(fmt.Sprintf("Hello file %d", i)))
+		       if err != nil {
+		           return err
+		       }
+		   }
+		*/
 	} else {
 		var xmlRes struct {
 			XMLName xml.Name `xml:"download"`
@@ -183,6 +196,14 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 		} else {
 			fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 		}
+	}
+
+}
+
+// [Event] List Resouces
+func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Request) {
+	if pSelf.authenticateSession(resp, req) == false {
+		return
 	}
 
 }
