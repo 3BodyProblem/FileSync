@@ -9,6 +9,7 @@ package main
 import (
 	"./fserver"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 )
@@ -19,9 +20,11 @@ var (
 	bDumpLog    bool   // Switch 4 Log Dump
 	sLogFile    string // Log File Path
 	sSyncFolder string // Sync File Folder
+	sAccount    string // Login Name
+	sPassword   string // Login Password
 )
 
-// package imitialization
+// Package Initialization
 func init() {
 	/////////////// Parse Arguments From Command Line
 	flag.IntVar(&nPort, "port", 31256, "file sync server's listen port (default:31256)")
@@ -29,10 +32,12 @@ func init() {
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
 	flag.StringVar(&sLogFile, "logpath", "./server.log", "log file's path (default:./Server.log)")
 	flag.StringVar(&sSyncFolder, "cfg", "./SyncFolder/", "data folder 4 sync")
+	flag.StringVar(&sAccount, "account", "", "login user name (default: '' ")
+	flag.StringVar(&sPassword, "password", "", "login password () default : '' ")
 	flag.Parse()
 }
 
-// program entry function
+// Program Entry Function
 func main() {
 	/////////////// Set Log File Path
 	if true == bDumpLog {
@@ -45,12 +50,12 @@ func main() {
 		log.SetOutput(oLogFile)
 	}
 
-	//////////////// Active File Sync Server
+	//////////////// Declare && Active File Sync Server
 	log.Println("[INF] [Begin] ##################################")
-	log.Println("[INF] Server IP:Port -->", sIP, nPort)
 	log.Println("[INF] Sync Folder -->", sSyncFolder)
 
-	fserver.RunServer()
+	objSyncSvr := &fserver.FileSyncServer{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword}
+	objSyncSvr.RunServer()
 
 	log.Println("[INF] [ End ] ##################################")
 }
