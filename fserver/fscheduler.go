@@ -15,10 +15,16 @@ import (
 func init() {
 }
 
+type DataSourceConfig struct {
+	MkID   string // market id ( SSE:shanghai SZSE:shenzheng )
+	Folder string // data file folder
+}
+
 ///////////////////////////////////// File Scheduler Stucture/Class
 type FileScheduler struct {
-	XmlCfgPath string // Xml Configuration File Path
-	SyncFolder string // Sync File Folder
+	XmlCfgPath       string                      // Xml Configuration File Path
+	SyncFolder       string                      // Sync File Folder
+	DataSourceConfig map[string]DataSourceConfig // Data Source Config Of Markets
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -50,17 +56,25 @@ func (pSelf *FileScheduler) Active() bool {
 		return false
 	}
 
-	log.Println("[INF] FileScheduler.Active() : version: ", objCfg.Version)
 	// Extract Settings
+	log.Println("[INF] FileScheduler.Active() : version: ", objCfg.Version)
+	pSelf.DataSourceConfig = make(map[string]DataSourceConfig)
 	for _, objSetting := range objCfg.Setting {
 		switch strings.ToLower(objSetting.Name) {
 		case "syncfolder":
 			pSelf.SyncFolder = objSetting.Value
 			log.Println("[INF] FileScheduler.Active() : SyncFolder: ", pSelf.SyncFolder)
 		default:
-			continue
+			sSetting := strings.ToLower(objSetting.Name)
+			if len(strings.Split(objSetting.Name, ".")) <= 1 {
+				log.Println("[WARN] FileScheduler.Active() : [Xml.Setting] Ignore -> ", objSetting.Name)
+				continue
+			}
+
+			pSelf.DataSourceConfig[sSetting] = DataSourceConfig{MkID: strings.Split(objSetting.Name, ".")[0], Folder: objSetting.Value}
+			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] ", sSetting, pSelf.DataSourceConfig[sSetting].MkID, pSelf.DataSourceConfig[sSetting].Folder)
 		}
 	}
 
-	return true
+	return pSelf.DataSourceConfig != nil
 }
