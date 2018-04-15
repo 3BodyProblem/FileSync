@@ -1,6 +1,6 @@
 /**
  * @brief		entry file of program
- * @detail		files sync server
+ * @detail		files sync client (milti-thread)
  * @author		barry
  * @date		2018/4/10
  */
