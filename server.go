@@ -59,7 +59,7 @@ func main() {
 		log.Fatal("[ERR] main() : a fatal error occur while initialize file scheduler engine ! ")
 	}
 
-	objSyncSvr := &fserver.FileSyncServer{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword}
+	objSyncSvr := &fserver.FileSyncServer{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, SyncFolder: objFileScheduler.SyncFolder}
 	objSyncSvr.RunServer()
 
 	log.Println("[INF] [ End ] ##################################")
