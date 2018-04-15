@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 var (
@@ -78,7 +79,7 @@ func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *
 
 		// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
 		if sResponse, err := xml.Marshal(&xmlRes); err != nil {
-			fmt.Fprintf(resp, "%s%s", xml.Header, err.Error())
+			fmt.Fprintf(resp, "%s", err.Error())
 		} else {
 			fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 		}
@@ -140,7 +141,7 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 
 	// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
 	if sResponse, err := xml.Marshal(&xmlRes); err != nil {
-		fmt.Fprintf(resp, "%s%s", xml.Header, err.Error())
+		fmt.Fprintf(resp, "%s", err.Error())
 	} else {
 		fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 	}
@@ -194,7 +195,7 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 
 		// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
 		if sResponse, err := xml.Marshal(&xmlRes); err != nil {
-			fmt.Fprintf(resp, "%s%s", xml.Header, err.Error())
+			fmt.Fprintf(resp, "%s", err.Error())
 		} else {
 			fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 		}
@@ -203,38 +204,21 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 }
 
 // [Event] List Resouces
-/*func (pSelf *FileSyncServer) getFilelist(path string) {
-	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
-		if f == nil {
-			return err
-		}
-		if f.IsDir() {
-			return nil
-		}
-		println(path)
-		return nil
-	})
-	if err != nil {
-		fmt.Printf("filepath.Walk() returned %v\n", err)
-	}
-}*/
-
 func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Request) {
 	if pSelf.authenticateSession(resp, req) == false {
 		return
 	}
 
-	mapRes := make(map[string]string)
+	type ResDownload struct {
+		XMLName xml.Name `xml:"download"`
+		URI     string   `xml:"uri,attr"`
+		MD5     string   `xml:"md5,attr"`
+		UPDATE  string   `xml:"update,attr"`
+	}
+
 	var objResourceList struct {
-		XMLName xml.Name `xml:"resource"`
-		Folders []struct {
-			XMLName xml.Name `xml:"folder"`
-			Path    string   `xml:"path,attr"`
-			Files   []struct {
-				XMLName xml.Name `xml:"file"`
-				Path    string   `xml:"path,attr"`
-			}
-		}
+		XMLName  xml.Name `xml:"resource"`
+		Download []ResDownload
 	} // Build Response Xml Structure
 
 	err := filepath.Walk(pSelf.SyncFolder, func(path string, f os.FileInfo, err error) error {
@@ -243,11 +227,10 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 		}
 
 		if f.IsDir() {
-			mapRes[path] = []string
 			return nil
 		}
 
-		mapRes[path] = []string
+		objResourceList.Download = append(objResourceList.Download, ResDownload{URI: path, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
 		return nil
 	})
 
@@ -257,9 +240,8 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 
 	// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
 	if sResponse, err := xml.Marshal(&objResourceList); err != nil {
-		fmt.Fprintf(resp, "%s%s", xml.Header, err.Error())
+		fmt.Fprintf(resp, "%s")
 	} else {
 		fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 	}
-
 }
