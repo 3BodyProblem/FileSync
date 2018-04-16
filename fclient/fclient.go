@@ -64,6 +64,10 @@ func (pSelf *FileSyncClient) DoTasks() {
 		return
 	}
 
+	for _, objRes := range objResourceList.Download {
+		log.Println("[INF] FileSyncClient.DoTasks() : res :", objRes.URI)
+	}
+
 }
 
 ///////////////////////////////////// [InnerMethod]
@@ -148,7 +152,7 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 		return false
 	}
 
-	// Unmarshal obj. from xml string
+	// unmarshal obj. from xml string
 	if err := xml.Unmarshal(body, &objResourceList); err != nil {
 		log.Println("[ERR] FileSyncClient.fetchResList() : ", err.Error())
 		log.Println("[ERR] FileSyncClient.fetchResList() : ", string(body))
