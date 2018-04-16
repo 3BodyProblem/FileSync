@@ -16,6 +16,15 @@ import (
 	"time"
 )
 
+type TaskStatusType int
+
+const (
+	ST_Actived      TaskStatusType = iota // Task Status Value = 0
+	ST_Initializing                       // Task Status Value = 1
+	ST_Completed                          // Task Status Value = 2
+	ST_Error                              // Task Status Value = 3
+)
+
 var (
 	globalCurrentCookies   []*http.Cookie // Current Cookie
 	globalCurrentCookieJar *cookiejar.Jar // Current CookieJar
@@ -55,8 +64,8 @@ type FileSyncClient struct {
 func (pSelf *FileSyncClient) DoTasks() {
 	log.Println("[INF] FileSyncClient.DoTasks() : Executing Tasks ...... ")
 	// Variable Definition
-	var objResourceList ResourceList
-	var objMapTask = make(map[string]bool)
+	var objResourceList ResourceList       // uri list object
+	var objMapTask = make(map[string]bool) // map object [URI]true:sucess?false:failure
 
 	// login
 	if false == pSelf.login2Server() {
@@ -72,32 +81,57 @@ func (pSelf *FileSyncClient) DoTasks() {
 
 	// downloading resources
 	pSelf.objChannel = make(chan DownloadStatus)
+	defer close(pSelf.objChannel) // defer this operation 2 release the channel object.
 	for _, objRes := range objResourceList.Download {
-		objMapTask[objRes.URI] = true
+		objMapTask[objRes.URI] = false
 		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE)
 	}
 
+	///////////////////////////// Check Tasks Status //////////////////////////////
+	log.Println("[INF] FileSyncClient.DoTasks() : Task Number = ", len(objMapTask))
 	for i := 0; i < pSelf.TTL; i++ {
 		select {
-		case x := <-pSelf.objChannel:
-			fmt.Println(x.URL)
+		case objStatus := <-pSelf.objChannel:
+			if _, ok := objMapTask[objStatus.URI]; ok {
+				if objStatus.Status == ST_Completed {
+					objMapTask[objStatus.URI] = true // mark up: task completed
+					log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
+					count := 0
+					for _, v := range objMapTask {
+						if v == true {
+							count++
+						}
+					}
+					if count == len(objMapTask) {
+						i = pSelf.TTL + 1
+					}
+				} else if objStatus.Status == ST_Error {
+					objMapTask[objStatus.URI] = false // mark up: task failed
+					log.Println("[WARN] FileSyncClient.DoTasks() : an error occur in task -->", objStatus.URI)
+				}
+			} else {
+				log.Println("[WARN] FileSyncClient.DoTasks() : invalid URI -->", objStatus.URI)
+			}
 		default:
 			time.Sleep(1 * time.Second)
 		}
 	}
 
-	// release
-	close(pSelf.objChannel)
+	log.Println("[INF] FileSyncClient.DoTasks() : Mission Completed ...... ")
 }
 
 ///////////////////////////////////// [InnerMethod]
 // [method] download resource
 type DownloadStatus struct {
-	URL string // download url
+	URI    string         // download url
+	Status TaskStatusType // task status
 }
 
 func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
-	log.Println("[INF] FileSyncClient.fetchResource() : res :", sUri)
+	log.Println("[INF] FileSyncClient.fetchResource() : [Downloading] -->", sUri)
+
+	log.Println("[INF] FileSyncClient.fetchResource() : [Complete]")
+	pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Completed} // Mission Complete!
 }
 
 // [method] login 2 server
