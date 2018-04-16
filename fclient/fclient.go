@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
+	"time"
 )
 
 var (
@@ -42,9 +43,11 @@ type ResourceList struct {
 
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
 type FileSyncClient struct {
-	ServerHost string // Server IP + Port
-	Account    string // Server Login Username
-	Password   string // Server Login Password
+	ServerHost string              // Server IP + Port
+	Account    string              // Server Login Username
+	Password   string              // Server Login Password
+	TTL        int                 // Time To Live
+	objChannel chan DownloadStatus // Channel Of Download Task
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -53,6 +56,7 @@ func (pSelf *FileSyncClient) DoTasks() {
 	log.Println("[INF] FileSyncClient.DoTasks() : Executing Tasks ...... ")
 	// Variable Definition
 	var objResourceList ResourceList
+	var objMapTask = make(map[string]bool)
 
 	// login
 	if false == pSelf.login2Server() {
@@ -67,17 +71,31 @@ func (pSelf *FileSyncClient) DoTasks() {
 	}
 
 	// downloading resources
+	pSelf.objChannel = make(chan DownloadStatus)
 	for _, objRes := range objResourceList.Download {
+		objMapTask[objRes.URI] = true
 		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE)
 	}
 
-	for {
-
+	for i := 0; i < pSelf.TTL; i++ {
+		select {
+		case x := <-pSelf.objChannel:
+			fmt.Println(x.URL)
+		default:
+			time.Sleep(1 * time.Second)
+		}
 	}
+
+	// release
+	close(pSelf.objChannel)
 }
 
 ///////////////////////////////////// [InnerMethod]
 // [method] download resource
+type DownloadStatus struct {
+	URL string // download url
+}
+
 func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 	log.Println("[INF] FileSyncClient.fetchResource() : res :", sUri)
 }

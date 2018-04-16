@@ -17,6 +17,7 @@ import (
 var (
 	sIP       string // Server IP
 	nPort     int    // Server Port
+	nTTL      int    // Time To Live (default: 3600 second)
 	bDumpLog  bool   // Switch 4 Log Dump
 	sLogFile  string // Log File Path
 	sAccount  string // Login Name
@@ -29,6 +30,7 @@ func init() {
 	// [Optional]
 	flag.StringVar(&sIP, "ip", "127.0.0.1", "file sync server's ip address (default:0.0.0.0)")
 	flag.IntVar(&nPort, "port", 31256, "file sync server's listen port (default:31256)")
+	flag.IntVar(&nTTL, "ttl", 3600, " (time to live (default:3600 second)")
 	flag.StringVar(&sLogFile, "logpath", "./Client.log", "log file's path (default:./Client.log)")
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
 	// [Mandatory]
@@ -52,7 +54,7 @@ func main() {
 	//////////////// Declare && Active FileSync Server / File Scheduler
 	log.Println("[INF] [Begin] ##################################")
 
-	objSyncClient := &fclient.FileSyncClient{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword}
+	objSyncClient := &fclient.FileSyncClient{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL}
 	objSyncClient.DoTasks()
 
 	log.Println("[INF] [ End ] ##################################")
