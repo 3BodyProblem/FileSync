@@ -21,7 +21,6 @@ var (
 	sLogFile  string // Log File Path
 	sAccount  string // Login Name
 	sPassword string // Login Password
-	sXmlCfg   string // Xml Configuration Path
 )
 
 // Package Initialization
@@ -33,7 +32,6 @@ func init() {
 	flag.StringVar(&sLogFile, "logpath", "./client.log", "log file's path (default:./Client.log)")
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
 	// [Mandatory]
-	flag.StringVar(&sXmlCfg, "cfg", "./cfg/configuration.xml", "configuration 4 files sync scheduler")
 	flag.StringVar(&sAccount, "account", "", "login user name (default: '' ")
 	flag.StringVar(&sPassword, "password", "", "login password () default : '' ")
 	flag.Parse()
