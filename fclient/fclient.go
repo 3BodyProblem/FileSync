@@ -68,9 +68,12 @@ func (pSelf *FileSyncClient) DoTasks() {
 
 	// downloading resources
 	for _, objRes := range objResourceList.Download {
-		go fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE)
+		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE)
 	}
 
+	for {
+
+	}
 }
 
 ///////////////////////////////////// [InnerMethod]
