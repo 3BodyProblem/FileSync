@@ -68,13 +68,18 @@ func (pSelf *FileSyncClient) DoTasks() {
 
 	// downloading resources
 	for _, objRes := range objResourceList.Download {
-		log.Println("[INF] FileSyncClient.DoTasks() : res :", objRes.URI)
+		go fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE)
 	}
 
 }
 
 ///////////////////////////////////// [InnerMethod]
-// [Event] login 2 server
+// [method] download resource
+func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
+	log.Println("[INF] FileSyncClient.fetchResource() : res :", sUri)
+}
+
+// [method] login 2 server
 func (pSelf *FileSyncClient) login2Server() bool {
 	// generate Login Url string
 	var sUrl string = fmt.Sprintf("http://%s/login?account=%s&password=%s", pSelf.ServerHost, pSelf.Account, pSelf.Password)
@@ -129,7 +134,7 @@ func (pSelf *FileSyncClient) login2Server() bool {
 	return false
 }
 
-// [Event] list resources
+// [method] list resources
 func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 	// generate list Url string
 	var sUrl string = fmt.Sprintf("http://%s/list", pSelf.ServerHost)

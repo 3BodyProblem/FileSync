@@ -29,7 +29,7 @@ func init() {
 	// [Optional]
 	flag.StringVar(&sIP, "ip", "127.0.0.1", "file sync server's ip address (default:0.0.0.0)")
 	flag.IntVar(&nPort, "port", 31256, "file sync server's listen port (default:31256)")
-	flag.StringVar(&sLogFile, "logpath", "./client.log", "log file's path (default:./Client.log)")
+	flag.StringVar(&sLogFile, "logpath", "./Client.log", "log file's path (default:./Client.log)")
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
 	// [Mandatory]
 	flag.StringVar(&sAccount, "account", "", "login user name (default: '' ")
