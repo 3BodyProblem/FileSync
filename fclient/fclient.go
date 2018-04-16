@@ -36,8 +36,8 @@ type ResDownload struct {
 }
 
 type ResourceList struct {
-	XMLName  xml.Name `xml:"resource"`
-	Download []ResDownload
+	XMLName  xml.Name      `xml:"resource"`
+	Download []ResDownload `xml:"download"`
 }
 
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
@@ -152,6 +152,7 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 	if err := xml.Unmarshal(body, &objResourceList); err != nil {
 		log.Println("[ERR] FileSyncClient.fetchResList() : ", err.Error())
 		log.Println("[ERR] FileSyncClient.fetchResList() : ", string(body))
+
 		return false
 	} else {
 		if len(objResourceList.Download) <= 0 {
