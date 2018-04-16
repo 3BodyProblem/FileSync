@@ -7,7 +7,7 @@
 package main
 
 import (
-	"./fserver"
+	"./fclient"
 	"flag"
 	"fmt"
 	"log"
@@ -28,9 +28,9 @@ var (
 func init() {
 	/////////////// Parse Arguments From Command Line
 	// [Optional]
-	flag.StringVar(&sIP, "ip", "0.0.0.0", "file sync server's ip address (default:0.0.0.0)")
+	flag.StringVar(&sIP, "ip", "127.0.0.1", "file sync server's ip address (default:0.0.0.0)")
 	flag.IntVar(&nPort, "port", 31256, "file sync server's listen port (default:31256)")
-	flag.StringVar(&sLogFile, "logpath", "./server.log", "log file's path (default:./Server.log)")
+	flag.StringVar(&sLogFile, "logpath", "./client.log", "log file's path (default:./Client.log)")
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
 	// [Mandatory]
 	flag.StringVar(&sXmlCfg, "cfg", "./cfg/configuration.xml", "configuration 4 files sync scheduler")
@@ -54,13 +54,8 @@ func main() {
 	//////////////// Declare && Active FileSync Server / File Scheduler
 	log.Println("[INF] [Begin] ##################################")
 
-	objFileScheduler := &fserver.FileScheduler{XmlCfgPath: sXmlCfg}
-	if objFileScheduler.Active() == false {
-		log.Fatal("[ERR] main() : a fatal error occur while initialize file scheduler engine ! ")
-	}
-
-	objSyncSvr := &fserver.FileSyncServer{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, SyncFolder: objFileScheduler.SyncFolder}
-	objSyncSvr.RunServer()
+	objSyncClient := &fclient.FileSyncClient{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword}
+	objSyncClient.DoTasks()
 
 	log.Println("[INF] [ End ] ##################################")
 }

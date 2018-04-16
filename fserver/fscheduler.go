@@ -57,7 +57,7 @@ func (pSelf *FileScheduler) Active() bool {
 	}
 
 	// Extract Settings
-	log.Println("[INF] FileScheduler.Active() : version: ", objCfg.Version)
+	log.Println("[INF] FileScheduler.Active() : configuration file version: ", objCfg.Version)
 	pSelf.DataSourceConfig = make(map[string]DataSourceConfig)
 	for _, objSetting := range objCfg.Setting {
 		switch strings.ToLower(objSetting.Name) {
