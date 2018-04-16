@@ -54,16 +54,19 @@ func (pSelf *FileSyncClient) DoTasks() {
 	// Variable Definition
 	var objResourceList ResourceList
 
+	// login
 	if false == pSelf.login2Server() {
 		log.Println("[ERR] FileSyncClient.DoTasks() : logon failure : invalid accountid or password, u r not allowed 2 logon thie computer.")
 		return
 	}
 
+	// list resource table
 	if false == pSelf.fetchResList(&objResourceList) {
 		log.Println("[ERR] FileSyncClient.DoTasks() : cannot list resource table from server.")
 		return
 	}
 
+	// downloading resources
 	for _, objRes := range objResourceList.Download {
 		log.Println("[INF] FileSyncClient.DoTasks() : res :", objRes.URI)
 	}
