@@ -129,6 +129,7 @@ func (pSelf *FileSyncClient) login2Server() bool {
 	return false
 }
 
+// [Event] list resources
 func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 	// generate list Url string
 	var sUrl string = fmt.Sprintf("http://%s/list", pSelf.ServerHost)
