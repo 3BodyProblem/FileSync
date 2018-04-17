@@ -22,7 +22,8 @@ const (
 	ST_Actived      TaskStatusType = iota // Task Status Value = 0
 	ST_Initializing                       // Task Status Value = 1
 	ST_Completed                          // Task Status Value = 2
-	ST_Error                              // Task Status Value = 3
+	ST_Ignore                             // Task Status Value = 3
+	ST_Error                              // Task Status Value = 4
 )
 
 var (
@@ -93,9 +94,12 @@ func (pSelf *FileSyncClient) DoTasks() {
 		select {
 		case objStatus := <-pSelf.objChannel:
 			if _, ok := objMapTask[objStatus.URI]; ok {
-				if objStatus.Status == ST_Completed {
+				if objStatus.Status == ST_Completed || objStatus.Status == ST_Ignore {
 					objMapTask[objStatus.URI] = true // mark up: task completed
-					log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
+					if objStatus.Status == ST_Completed {
+						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
+					}
+
 					count := 0
 					for _, v := range objMapTask {
 						if v == true {
@@ -128,10 +132,17 @@ type DownloadStatus struct {
 }
 
 func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
-	log.Println("[INF] FileSyncClient.fetchResource() : [Downloading] -->", sUri, sMD5, sDateTime)
+	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
 
-	log.Println("[INF] FileSyncClient.fetchResource() : [Complete]")
-	pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Completed} // Mission Complete!
+	if true == objFCompare.Compare() {
+		log.Println("[INF] FileSyncClient.fetchResource() : [Ignore] -->", sUri, sMD5, sDateTime)
+		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Ignore} // Mission Ignored!
+	} else {
+		log.Println("[INF] FileSyncClient.fetchResource() : [Downloading] -->", sUri, sMD5, sDateTime)
+
+		log.Println("[INF] FileSyncClient.fetchResource() : [Complete]")
+		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Completed} // Mission Complete!
+	}
 }
 
 // [method] login 2 server
