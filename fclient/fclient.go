@@ -8,10 +8,12 @@ package fclient
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -177,7 +179,16 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 		}
 
 		sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
-		sLocalFile := filepath.Join(sLocalFolder, sUri)
+		sLocalFile := filepath.Join(strings.LastIndex(sLocalFolder, "/"), sUri)
+
+		err = os.MkdirAll(sLocalFile, 0777)
+		if err != nil {
+			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
+			return
+		}
+
+		file, _ := os.Create(sLocalFile)
+		io.Copy(file, httpRes.Body)
 
 		log.Println("[INF] FileSyncClient.fetchResource() : [Complete] -->", sLocalFile)
 		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Completed} // Mission Complete!
