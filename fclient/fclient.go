@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -140,7 +141,45 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 	} else {
 		log.Println("[INF] FileSyncClient.fetchResource() : [Downloading] -->", sUri, sMD5, sDateTime)
 
-		log.Println("[INF] FileSyncClient.fetchResource() : [Complete]")
+		// generate list Url string
+		var sUrl string = fmt.Sprintf("http://%s/get?uri=%s", pSelf.ServerHost, sUri)
+		log.Println("[INF] FileSyncClient.fetchResource() : ", sUrl)
+
+		// declare http request variable
+		httpClient := http.Client{
+			CheckRedirect: nil,
+			Jar:           globalCurrentCookieJar,
+		}
+		httpReq, err := http.NewRequest("GET", sUrl, nil)
+		httpRes, err := httpClient.Do(httpReq)
+		if err != nil {
+			log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, err.Error())
+			return
+		}
+
+		// parse && read response string
+		defer httpRes.Body.Close()
+		body, err := ioutil.ReadAll(httpRes.Body)
+		if err != nil {
+			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, err.Error())
+			return
+		}
+
+		// restore response file 2 resource folder
+		log.Println("[INF] FileSyncClient.fetchResource() : ", body)
+
+		// get absolute file path
+		sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
+		if err != nil {
+			log.Println("[WARN] FileSyncClient.fetchResource() : failed 2 fetch absolute path of program")
+			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
+			return
+		}
+
+		sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
+		sLocalFile := filepath.Join(sLocalFolder, sUri)
+
+		log.Println("[INF] FileSyncClient.fetchResource() : [Complete] -->", sLocalFile)
 		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Completed} // Mission Complete!
 	}
 }
