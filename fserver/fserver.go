@@ -7,9 +7,9 @@ package fserver
 
 import (
 	"./github.com/astaxie/beego/session"
-	"archive/zip"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -150,6 +150,14 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 // [Event] Download
 func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.Request) {
 	var sZipName string = ""
+	var xmlRes struct {
+		XMLName xml.Name `xml:"download"`
+		Result  struct {
+			XMLName xml.Name `xml:"result"`
+			Status  string   `xml:"status,attr"`
+			Desc    string   `xml:"desc,attr"`
+		}
+	} // Build Response Xml Structure
 
 	if pSelf.authenticateSession(resp, req) == false {
 		return
@@ -162,33 +170,22 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 	if len(req.Form["uri"]) > 0 {
 		sZipName = req.Form["uri"][0]
 		resp.Header().Set("Content-Type", "application/zip")
+		resp.Header().Set("Content-Encoding", "zip")
 		resp.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", sZipName))
-
-		objZipWriter := zip.NewWriter(resp)
-		defer objZipWriter.Close()
-
-		/*
-		   for i := 0; i < 5; i++ {
-		       f, err := zipW.Create(strconv.Itoa(i) + ".txt")
-		       if err != nil {
-		           return err
-		       }
-		       _, err = f.Write([]byte(fmt.Sprintf("Hello file %d", i)))
-		       if err != nil {
-		           return err
-		       }
-		   }
-		*/
-	} else {
-		var xmlRes struct {
-			XMLName xml.Name `xml:"download"`
-			Result  struct {
-				XMLName xml.Name `xml:"result"`
-				Status  string   `xml:"status,attr"`
-				Desc    string   `xml:"desc,attr"`
+		dataRes, err := ioutil.ReadFile(sZipName)
+		if err == nil {
+			resp.Write(dataRes)
+		} else {
+			xmlRes.Result.Status = "failure"
+			xmlRes.Result.Desc = "[WARNING] Oops! failed 2 load data file," + sZipName
+			// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
+			if sResponse, err := xml.Marshal(&xmlRes); err != nil {
+				fmt.Fprintf(resp, "%s", err.Error())
+			} else {
+				fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 			}
-		} // Build Response Xml Structure
-
+		}
+	} else {
 		xmlRes.Result.Status = "failure"
 		xmlRes.Result.Desc = "[WARNING] Oops! miss argument, GET: uri=''"
 		log.Println("[INF] [Download File] ---> [FAILURE], miss argument, GET: uri=''")

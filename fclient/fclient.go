@@ -6,6 +6,8 @@
 package fclient
 
 import (
+	//"archive/zip"
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -102,6 +104,10 @@ func (pSelf *FileSyncClient) DoTasks() {
 					objMapTask[objStatus.URI] = true // mark up: task completed
 					if objStatus.Status == ST_Completed {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
+					} else if objStatus.Status == ST_Ignore {
+						log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", objStatus.URI)
+					} else if objStatus.Status == ST_Error {
+						log.Println("[ERR] FileSyncClient.DoTasks() : [Exception] -->", objStatus.URI)
 					}
 
 					count := 0
@@ -136,66 +142,61 @@ type DownloadStatus struct {
 }
 
 func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
+	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
+	defer func() {
+		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus} // Mission Finished!
+	}()
 
 	if true == objFCompare.Compare() {
-		log.Println("[INF] FileSyncClient.fetchResource() : [Ignore] -->", sUri, sMD5, sDateTime)
-		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Ignore} // Mission Ignored!
+		nTaskStatus = ST_Ignore // Mission Ignored!
 	} else {
-		log.Println("[INF] FileSyncClient.fetchResource() : [Downloading] -->", sUri, sMD5, sDateTime)
-
 		// generate list Url string
 		var sUrl string = fmt.Sprintf("http://%s/get?uri=%s", pSelf.ServerHost, sUri)
-		log.Println("[INF] FileSyncClient.fetchResource() : ", sUrl)
+		log.Println("[INF] FileSyncClient.fetchResource() : [Downloading] -->", sUri, sMD5, sDateTime)
 
-		// declare http request variable
-		httpClient := http.Client{
-			CheckRedirect: nil,
-			Jar:           globalCurrentCookieJar,
-		}
+		// parse && read response string
+		httpClient := http.Client{CheckRedirect: nil, Jar: globalCurrentCookieJar}
 		httpReq, err := http.NewRequest("GET", sUrl, nil)
 		httpRes, err := httpClient.Do(httpReq)
 		if err != nil {
 			log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, err.Error())
-			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
 			return
 		}
-
-		// parse && read response string
-		defer httpRes.Body.Close()
-		body, err := ioutil.ReadAll(httpRes.Body)
-		if err != nil {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, err.Error())
-			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
-			return
-		}
-
-		// restore response file 2 resource folder
-		log.Println("[INF] FileSyncClient.fetchResource() : ", body)
 
 		// get absolute file path
+		defer httpRes.Body.Close()
 		sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
 		if err != nil {
 			log.Println("[WARN] FileSyncClient.fetchResource() : failed 2 fetch absolute path of program")
-			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
 			return
 		}
 
+		// save resource file 3 disk
 		sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
 		sLocalFile := filepath.Join(sLocalFolder, sUri)
-
 		err = os.MkdirAll(path.Dir(sLocalFile), 0777)
 		if err != nil {
 			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
-			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
 			return
 		}
 
-		file, _ := os.Create(sLocalFile)
-		io.Copy(file, httpRes.Body)
+		objDataBuf := &bytes.Buffer{}
+		_, err2 := objDataBuf.ReadFrom(httpRes.Body)
+		if err2 != nil {
+			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, err.Error())
+			return
+		}
 
-		log.Println("[INF] FileSyncClient.fetchResource() : [Complete] -->", sLocalFile)
-		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Completed} // Mission Complete!
+		objFile, _ := os.Create(sLocalFile)
+		defer objFile.Close()
+		_, err = io.Copy(objFile, objDataBuf)
+		if err != nil {
+			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot save 2 file : ", sUri, err.Error())
+			return
+		}
+
+		nTaskStatus = ST_Completed
 	}
 }
 

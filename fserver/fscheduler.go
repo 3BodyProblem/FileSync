@@ -6,6 +6,7 @@
 package fserver
 
 import (
+	//"archive/zip"
 	"encoding/xml"
 	"io/ioutil"
 	"log"
