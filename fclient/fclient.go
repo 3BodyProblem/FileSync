@@ -104,7 +104,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 					objMapTask[objStatus.URI] = true // mark up: task completed
 					if objStatus.Status == ST_Completed {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
-						objUnzip.Unzip(objStatus.LocalPath)
+						objUnzip.Unzip(objStatus.LocalPath, objStatus.URI)
 					} else if objStatus.Status == ST_Ignore {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", objStatus.URI)
 					} else if objStatus.Status == ST_Error {
