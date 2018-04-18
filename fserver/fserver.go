@@ -60,10 +60,7 @@ func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *
 	defer objSession.SessionRelease(resp)
 	sUNameInSS := objSession.Get("username")
 
-	if sUNameInSS != nil {
-		log.Println("[INF] [AuthenticateUser] ---> [OK]: ", sUNameInSS)
-		return true
-	} else {
+	if sUNameInSS == nil {
 		var xmlRes struct {
 			XMLName xml.Name `xml:"authenticate"`
 			Result  struct {
@@ -86,6 +83,8 @@ func (pSelf *FileSyncServer) authenticateSession(resp http.ResponseWriter, req *
 
 		return false
 	}
+
+	return true
 }
 
 // [Event] default
