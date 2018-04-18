@@ -6,7 +6,6 @@
 package fclient
 
 import (
-	//"archive/zip"
 	"bytes"
 	"encoding/xml"
 	"fmt"
@@ -137,15 +136,17 @@ func (pSelf *FileSyncClient) DoTasks() {
 ///////////////////////////////////// [InnerMethod]
 // [method] download resource
 type DownloadStatus struct {
-	URI    string         // download url
-	Status TaskStatusType // task status
+	URI       string         // download url
+	Status    TaskStatusType // task status
+	LocalPath string         // File Path In Disk
 }
 
 func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
+	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
 	defer func() {
-		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus} // Mission Finished!
+		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath} // Mission Finished!
 	}()
 
 	if true == objFCompare.Compare() {
@@ -196,7 +197,8 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 			return
 		}
 
-		nTaskStatus = ST_Completed
+		sLocalPath = sLocalFile    // local file path
+		nTaskStatus = ST_Completed // set complete flag
 	}
 }
 
