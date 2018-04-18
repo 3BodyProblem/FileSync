@@ -157,6 +157,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 		httpRes, err := httpClient.Do(httpReq)
 		if err != nil {
 			log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, err.Error())
+			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
 			return
 		}
 
@@ -165,6 +166,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 		body, err := ioutil.ReadAll(httpRes.Body)
 		if err != nil {
 			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, err.Error())
+			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
 			return
 		}
 
@@ -185,6 +187,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 		err = os.MkdirAll(path.Dir(sLocalFile), 0777)
 		if err != nil {
 			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
+			pSelf.objChannel <- DownloadStatus{URI: sUri, Status: ST_Error} // Mission Terminated!
 			return
 		}
 
