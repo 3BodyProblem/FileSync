@@ -7,13 +7,16 @@ package fserver
 
 import (
 	"./github.com/astaxie/beego/session"
+	"crypto/md5"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -187,7 +190,7 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 	} else {
 		xmlRes.Result.Status = "failure"
 		xmlRes.Result.Desc = "[WARNING] Oops! miss argument, GET: uri=''"
-		log.Println("[INF] [Download File] ---> [FAILURE], miss argument, GET: uri=''")
+		log.Println("[INF] [Download File] ---> [FAILURE], miss argument, GET: uri='nil'")
 
 		// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
 		if sResponse, err := xml.Marshal(&xmlRes); err != nil {
@@ -226,7 +229,27 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 			return nil
 		}
 
-		objResourceList.Download = append(objResourceList.Download, ResDownload{URI: path, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
+		// get absolute path of URI in local machine
+		objFile, err := os.Open(path)
+		if err != nil {
+			log.Println("[WARN] FileSyncServer.handleList() : local file is not exist :", path)
+			return nil
+		}
+
+		// parepare 2 generate md5
+		defer objFile.Close()
+		objMD5Hash := md5.New()
+		if _, err := io.Copy(objMD5Hash, objFile); err != nil {
+			log.Printf("[WARN] FileSyncServer.handleList() : failed 2 generate MD5 : %s : %s", path, err.Error())
+			return nil
+		}
+
+		// generate MD5 string
+		var byteMD5 []byte
+		var sMD5Str string = fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5))
+
+		objResourceList.Download = append(objResourceList.Download, ResDownload{URI: path, MD5: strings.ToLower(sMD5Str), UPDATE: time.Now().Format("2006-01-02 15:04:05")})
+
 		return nil
 	})
 
