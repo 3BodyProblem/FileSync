@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -179,9 +180,9 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 		}
 
 		sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
-		sLocalFile := filepath.Join(strings.LastIndex(sLocalFolder, "/"), sUri)
+		sLocalFile := filepath.Join(sLocalFolder, sUri)
 
-		err = os.MkdirAll(sLocalFile, 0777)
+		err = os.MkdirAll(path.Dir(sLocalFile), 0777)
 		if err != nil {
 			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
 			return
