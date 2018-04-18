@@ -29,7 +29,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 	log.Printf("[INF] Uncompress.Unzip() : [Uncompressing] (%s) --> (%s) ", sZipSrcPath, pSelf.TargetFolder)
 
 	// open zip file
-	sLocalFolder := filepath.Join(pSelf.TargetFolder, sSubPath)
+	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
 	objZipReader, err := zip.OpenReader(sZipSrcPath)
 	if err != nil {
 		log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot open zip file :", sZipSrcPath, err.Error())
@@ -46,7 +46,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 
 		defer objReadCloser.Close()
 		sTargetFile := filepath.Join(sLocalFolder, objFile.Name)
-		log.Println("[INF] Uncompress.Unzip() : [Uncompressing] ---------------------------------->  ", objFile.Name, sTargetFile)
 		err = os.MkdirAll(path.Dir(sTargetFile), 0755)
 		if err != nil {
 			log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 zip file, file name =", sTargetFile)
