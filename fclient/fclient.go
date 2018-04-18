@@ -67,11 +67,12 @@ type FileSyncClient struct {
 
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Client
-func (pSelf *FileSyncClient) DoTasks() {
+func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	log.Println("[INF] FileSyncClient.DoTasks() : Executing Tasks ...... ")
 	// Variable Definition
 	var objResourceList ResourceList       // uri list object
 	var objMapTask = make(map[string]bool) // map object [URI]true:sucess?false:failure
+	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
 
 	// login
 	if false == pSelf.login2Server() {
@@ -103,6 +104,7 @@ func (pSelf *FileSyncClient) DoTasks() {
 					objMapTask[objStatus.URI] = true // mark up: task completed
 					if objStatus.Status == ST_Completed {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
+						objUnzip.Unzip(objStatus.LocalPath)
 					} else if objStatus.Status == ST_Ignore {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", objStatus.URI)
 					} else if objStatus.Status == ST_Error {

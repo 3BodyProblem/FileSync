@@ -24,8 +24,8 @@ type Uncompress struct {
 
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
-func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubTargetPath string) bool {
-	log.Println("[INF] Uncompress.Unzip() : [Uncompressing] (%s) --> (%s) ", sZipSrcPath, pSelf.TargetFolder)
+func (pSelf *Uncompress) Unzip(sZipSrcPath string) bool {
+	log.Printf("[INF] Uncompress.Unzip() : [Uncompressing] (%s) --> (%s) ", sZipSrcPath, pSelf.TargetFolder)
 
 	// open zip file
 	objZipReader, err := zip.OpenReader(sZipSrcPath)
@@ -43,7 +43,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubTargetPath string) bool {
 		}
 
 		defer objReadCloser.Close()
-		sTargetFile := sSubTargetPath + objFile.Name
+		sTargetFile := pSelf.TargetFolder + objFile.Name
 		err = os.MkdirAll(path.Dir(sTargetFile), 0755)
 		if err != nil {
 			log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 zip file, file name =", sTargetFile)
@@ -64,7 +64,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubTargetPath string) bool {
 
 		objTargetFile.Close()
 		objReadCloser.Close()
-		log.Println("[INF] Uncompress.Unzip() : [Uncompressed] (%s) --> (%s) ", sZipSrcPath, sTargetFile)
+		log.Printf("[INF] Uncompress.Unzip() : [Uncompressed] (%s) --> (%s) ", sZipSrcPath, sTargetFile)
 	}
 
 	return true

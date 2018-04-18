@@ -15,13 +15,14 @@ import (
 )
 
 var (
-	sIP       string // Server IP
-	nPort     int    // Server Port
-	nTTL      int    // Time To Live (default: 3600 second)
-	bDumpLog  bool   // Switch 4 Log Dump
-	sLogFile  string // Log File Path
-	sAccount  string // Login Name
-	sPassword string // Login Password
+	sIP               string // Server IP
+	nPort             int    // Server Port
+	nTTL              int    // Time To Live (default: 3600 second)
+	bDumpLog          bool   // Switch 4 Log Dump
+	sLogFile          string // Log File Path
+	sAccount          string // Login Name
+	sPassword         string // Login Password
+	sUncompressFolder string // Folder Which Extract Data
 )
 
 // Package Initialization
@@ -33,6 +34,7 @@ func init() {
 	flag.IntVar(&nTTL, "ttl", 3600, " (time to live (default:3600 second)")
 	flag.StringVar(&sLogFile, "logpath", "./Client.log", "log file's path (default:./Client.log)")
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
+	flag.StringVar(&sUncompressFolder, "dir", "./FileData/", "data folder path (default :./FileData/)")
 	// [Mandatory]
 	flag.StringVar(&sAccount, "account", "", "login user name (default: '' ")
 	flag.StringVar(&sPassword, "password", "", "login password () default : '' ")
@@ -55,7 +57,7 @@ func main() {
 	log.Println("[INF] [Begin] ##################################")
 
 	objSyncClient := &fclient.FileSyncClient{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL}
-	objSyncClient.DoTasks()
+	objSyncClient.DoTasks(sUncompressFolder)
 
 	log.Println("[INF] [ End ] ##################################")
 }
