@@ -27,8 +27,6 @@ type Uncompress struct {
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
 func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
-	log.Printf("[INF] Uncompress.Unzip() : [Uncompressing] (%s) --> (%s) ", sZipSrcPath, pSelf.TargetFolder)
-
 	// open zip file
 	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
 	objZipReader, err := zip.OpenReader(sZipSrcPath)
@@ -58,7 +56,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			return false
 		}
 
-		log.Println("[INF] Uncompress.Unzip() : [Uncompressing] creating zip file in target folder, file name =", sTargetFile)
 		objTargetFile, err := os.Create(sTargetFile)
 		if err != nil {
 			log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create zip file in target folder, file name =", sTargetFile)
@@ -73,7 +70,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 
 		objTargetFile.Close()
 		objReadCloser.Close()
-		log.Printf("[INF] Uncompress.Unzip() : [Uncompressed] (%s) --> (%s) ", sZipSrcPath, sTargetFile)
 	}
 
 	return true
