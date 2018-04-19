@@ -41,7 +41,7 @@ func (pSelf *FComparison) Compare() bool {
 	}
 
 	sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
-	log.Printf("[INF] FComparison.Compare() : [Comparing]    (%s)   VS   (%s) ", pSelf.URI, sLocalFolder)
+	log.Printf("[INF] FComparison.Compare() : [Comparing]    (%s)   VS   (%s) ", pSelf.URI, filepath.Join(sLocalFolder, pSelf.URI))
 
 	err = os.MkdirAll(sLocalFolder, 0777)
 	if err != nil {
