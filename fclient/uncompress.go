@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 // Package Initialization
@@ -46,12 +47,18 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 
 		defer objReadCloser.Close()
 		sTargetFile := filepath.Join(sLocalFolder, objFile.Name)
-		err = os.MkdirAll(path.Dir(sTargetFile), 0755)
+		_, sSplitFileName := path.Split(sTargetFile)
+		if strings.Contains(sSplitFileName, ".") == false {
+			continue
+		}
+		sTargetFolder := path.Dir(sTargetFile)
+		err = os.MkdirAll(sTargetFolder, 0755)
 		if err != nil {
 			log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 zip file, file name =", sTargetFile)
 			return false
 		}
 
+		log.Println("[INF] Uncompress.Unzip() : [Uncompressing] creating zip file in target folder, file name =", sTargetFile)
 		objTargetFile, err := os.Create(sTargetFile)
 		if err != nil {
 			log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create zip file in target folder, file name =", sTargetFile)
