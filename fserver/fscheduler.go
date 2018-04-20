@@ -10,15 +10,19 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	"log"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func init() {
 }
 
 type DataSourceConfig struct {
-	MkID   string // market id ( SSE:shanghai SZSE:shenzheng )
-	Folder string // data file folder
+	MkID       string    // market id ( SSE:shanghai SZSE:shenzheng )
+	Folder     string    // data file folder
+	MD5        string    // md5 of file
+	UpdateTime time.Time // updatetime of file
 }
 
 ///////////////////////////////////// File Scheduler Stucture/Class
@@ -26,6 +30,8 @@ type FileScheduler struct {
 	XmlCfgPath       string                      // Xml Configuration File Path
 	SyncFolder       string                      // Sync File Folder
 	DataSourceConfig map[string]DataSourceConfig // Data Source Config Of Markets
+	BuildTime        int                         // Resources' Build Time
+	LastUpdateTime   time.Time                   // Last Updatetime
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -59,9 +65,13 @@ func (pSelf *FileScheduler) Active() bool {
 
 	// Extract Settings
 	log.Println("[INF] FileScheduler.Active() : [Xml.Setting] configuration file version: ", objCfg.Version)
+	pSelf.LastUpdateTime = time.Now().AddDate(-1, 0, -1)
 	pSelf.DataSourceConfig = make(map[string]DataSourceConfig)
 	for _, objSetting := range objCfg.Setting {
 		switch strings.ToLower(objSetting.Name) {
+		case "buildtime":
+			pSelf.BuildTime, _ = strconv.Atoi(objSetting.Value)
+			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] Build Time: ", pSelf.BuildTime)
 		case "syncfolder":
 			pSelf.SyncFolder = objSetting.Value
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] SyncFolder: ", pSelf.SyncFolder)
@@ -77,5 +87,22 @@ func (pSelf *FileScheduler) Active() bool {
 		}
 	}
 
-	return (pSelf.DataSourceConfig != nil)
+	return pSelf.BuildSyncResource()
+}
+
+func (pSelf *FileScheduler) BuildSyncResource() bool {
+	objNowTime := time.Now()
+	objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
+
+	// need 2 initialize resouces
+	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
+		if objNowTime.After(objBuildTime) == true {
+			log.Printf("[INF] FileScheduler.BuildSyncResource() : (BuildTime=%s) Building sync resources... ", objBuildTime.Format("2006-01-02 15:04:05"))
+			pSelf.LastUpdateTime = time.Now() // update time
+
+			log.Println("[INF] FileScheduler.BuildSyncResource() : Builded!")
+		}
+	}
+
+	return true
 }
