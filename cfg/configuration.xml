@@ -7,4 +7,3 @@
 	<setting name="SZSE.m1" value="/home/barry/Workspace/HQHISDATA/SZSE/MIN/" desc="folder of shenzheng 1 minute lines (raw data)"/>
 	<setting name="SZSE.d1" value="/home/barry/Workspace/HQHISDATA/SZSE/DAY/" desc="folder of shenzheng day lines (raw data)"/>
 </cfg>
-

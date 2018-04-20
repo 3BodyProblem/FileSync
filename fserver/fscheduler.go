@@ -81,7 +81,7 @@ func (pSelf *FileScheduler) Active() bool {
 				continue
 			}
 
-			pSelf.DataSourceConfig[sSetting] = DataSourceConfig{MkID: strings.Split(objSetting.Name, ".")[0], Folder: objSetting.Value}
+			pSelf.DataSourceConfig[sSetting] = DataSourceConfig{MkID: strings.ToLower(strings.Split(objSetting.Name, ".")[0]), Folder: objSetting.Value}
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] ", sSetting, pSelf.DataSourceConfig[sSetting].MkID, pSelf.DataSourceConfig[sSetting].Folder)
 		}
 	}
@@ -102,7 +102,11 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 
 			pSelf.LastUpdateTime = time.Now() // update time
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
-				objZipCompress.Zip(sResName, objDataSrcCfg)
+				if true == objZipCompress.Zip(sResName, &objDataSrcCfg) {
+					log.Println("[INF] FileScheduler.buildSyncResource() : [OK] ZipFile : ", objDataSrcCfg.Folder)
+				} else {
+					log.Println("[WARN] FileScheduler.buildSyncResource() : [FAILURE] ZipFile : ", objDataSrcCfg.Folder)
+				}
 			}
 
 			log.Println("[INF] FileScheduler.buildSyncResource() : Sync Resources Builded! ......")
