@@ -6,7 +6,6 @@
 package fserver
 
 import (
-	//"archive/zip"
 	"encoding/xml"
 	"io/ioutil"
 	"log"
@@ -87,24 +86,26 @@ func (pSelf *FileScheduler) Active() bool {
 		}
 	}
 
-	return pSelf.BuildSyncResource()
+	return pSelf.buildSyncResource()
 }
 
-func (pSelf *FileScheduler) BuildSyncResource() bool {
+///////////////////////////////////// [InnerMethod]
+func (pSelf *FileScheduler) buildSyncResource() bool {
 	objNowTime := time.Now()
 	objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
 
 	// need 2 initialize resouces
 	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
 		if objNowTime.After(objBuildTime) == true {
-			log.Printf("[INF] FileScheduler.BuildSyncResource() : (BuildTime=%s) Building sync resources... ", objBuildTime.Format("2006-01-02 15:04:05"))
-			pSelf.LastUpdateTime = time.Now() // update time
+			var objZipCompress Compress = Compress{TargetFolder: pSelf.SyncFolder}
+			log.Printf("[INF] FileScheduler.buildSyncResource() : (BuildTime=%s) Building sync resources... ", objBuildTime.Format("2006-01-02 15:04:05"))
 
-			for key, value := range pSelf.DataSourceConfig {
-				log.Printf("%s, %s", key, value.Folder)
+			pSelf.LastUpdateTime = time.Now() // update time
+			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
+				objZipCompress.Zip(sResName, objDataSrcCfg.Folder)
 			}
 
-			log.Println("[INF] FileScheduler.BuildSyncResource() : Builded!")
+			log.Println("[INF] FileScheduler.buildSyncResource() : Builded!")
 		}
 	}
 
