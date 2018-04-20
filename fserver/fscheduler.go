@@ -100,6 +100,10 @@ func (pSelf *FileScheduler) BuildSyncResource() bool {
 			log.Printf("[INF] FileScheduler.BuildSyncResource() : (BuildTime=%s) Building sync resources... ", objBuildTime.Format("2006-01-02 15:04:05"))
 			pSelf.LastUpdateTime = time.Now() // update time
 
+			for key, value := range pSelf.DataSourceConfig {
+				log.Printf("%s, %s", key, value.Folder)
+			}
+
 			log.Println("[INF] FileScheduler.BuildSyncResource() : Builded!")
 		}
 	}
