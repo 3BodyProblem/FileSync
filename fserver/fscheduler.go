@@ -58,13 +58,13 @@ func (pSelf *FileScheduler) Active() bool {
 	}
 
 	// Extract Settings
-	log.Println("[INF] FileScheduler.Active() : configuration file version: ", objCfg.Version)
+	log.Println("[INF] FileScheduler.Active() : [Xml.Setting] configuration file version: ", objCfg.Version)
 	pSelf.DataSourceConfig = make(map[string]DataSourceConfig)
 	for _, objSetting := range objCfg.Setting {
 		switch strings.ToLower(objSetting.Name) {
 		case "syncfolder":
 			pSelf.SyncFolder = objSetting.Value
-			log.Println("[INF] FileScheduler.Active() : SyncFolder: ", pSelf.SyncFolder)
+			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] SyncFolder: ", pSelf.SyncFolder)
 		default:
 			sSetting := strings.ToLower(objSetting.Name)
 			if len(strings.Split(objSetting.Name, ".")) <= 1 {
@@ -77,5 +77,5 @@ func (pSelf *FileScheduler) Active() bool {
 		}
 	}
 
-	return pSelf.DataSourceConfig != nil
+	return (pSelf.DataSourceConfig != nil)
 }
