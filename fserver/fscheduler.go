@@ -98,14 +98,14 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
 		if objNowTime.After(objBuildTime) == true {
 			var objZipCompress Compress = Compress{TargetFolder: pSelf.SyncFolder}
-			log.Printf("[INF] FileScheduler.buildSyncResource() : (BuildTime=%s) Building sync resources... ", objBuildTime.Format("2006-01-02 15:04:05"))
+			log.Printf("[INF] FileScheduler.buildSyncResource() : (BuildTime=%s) Building Sync Resources ......", objBuildTime.Format("2006-01-02 15:04:05"))
 
 			pSelf.LastUpdateTime = time.Now() // update time
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
-				objZipCompress.Zip(sResName, objDataSrcCfg.Folder)
+				objZipCompress.Zip(sResName, objDataSrcCfg)
 			}
 
-			log.Println("[INF] FileScheduler.buildSyncResource() : Builded!")
+			log.Println("[INF] FileScheduler.buildSyncResource() : Sync Resources Builded! ......")
 		}
 	}
 

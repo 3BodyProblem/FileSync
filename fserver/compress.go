@@ -26,9 +26,9 @@ type Compress struct {
 
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
-func (pSelf *Compress) Zip(sZipSrcPath, sSubPath string) bool {
+func (pSelf *Compress) Zip(sZipSrcPath string, objDataSrc DataSourceConfig) bool {
 	// open zip file
-	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
+	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, objDataSrc.Folder))
 	objZipReader, err := zip.OpenReader(sZipSrcPath)
 	if err != nil {
 		log.Println("[ERR] Compress.Unzip() : [Compressing] cannot open zip file :", sZipSrcPath, err.Error())
