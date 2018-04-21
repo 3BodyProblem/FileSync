@@ -32,10 +32,9 @@ func (pSelf *Compress) Zip(sResName string, objDataSrc *DataSourceConfig) bool {
 	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.zip)
 	log.Printf("[INF] Compress.Zip() : [Compressing] ExchangeCode:%s, DataType:%s, Folder:%s", objDataSrc.MkID, sDataType, objDataSrc.Folder)
 
-	_, sFileName := path.Split(sDestFolder)
 	switch {
 	case (objDataSrc.MkID == "sse" && sDataType == ".d1") || (objDataSrc.MkID == "szse" && sDataType == ".d1"):
-		pSelf.zipFolder(filepath.Join(sDestFolder, sFileName+".zip"), objDataSrc.Folder)
+		pSelf.zipFolder(filepath.Join(sDestFolder, "DAY.zip"), objDataSrc.Folder)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m1") || (objDataSrc.MkID == "szse" && sDataType == ".m1"):
 	default:
 		log.Printf("[ERR] Compress.Zip() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
