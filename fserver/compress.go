@@ -82,7 +82,8 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 
 		defer objFile.Close()
 		_, sFileName := path.Split(sPath)
-		objInserter, err := objZipWriter.Create(sFileName)
+		_, sFolder := path.Split(sSrcFolder)
+		objInserter, err := objZipWriter.Create(filepath.Join(sFolder, sFileName))
 		if err != nil {
 			log.Println("[WARN] Compress.zipFolder() : failed 2 add file :", sPath)
 			return nil
