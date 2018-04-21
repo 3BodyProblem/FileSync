@@ -8,7 +8,6 @@ package fserver
 import (
 	"archive/zip"
 	"io"
-	//"io/ioutil"
 	"log"
 	"os"
 	"path"
