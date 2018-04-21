@@ -7,8 +7,8 @@ package fserver
 
 import (
 	"archive/zip"
-	//"crypto/md5"
-	"io/ioutil"
+	"io"
+	//"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -81,23 +81,26 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 		}
 
 		defer objFile.Close()
-		_, sFileName := path.Split(sPath)
-		_, sFolder := path.Split(sSrcFolder)
-		objInserter, err := objZipWriter.Create(filepath.Join(sFolder, sFileName))
+		_, sFileName := path.Split(sDestFile)
+		sSubFolder := strings.Split(sFileName, ".")[0]
+		info, err := objFile.Stat()
+		objHInfo, err := zip.FileInfoHeader(info)
 		if err != nil {
-			log.Println("[WARN] Compress.zipFolder() : failed 2 add file :", sPath)
+			log.Println("[WARN] Compress.zipFolder() : failed 2 create file info head :", err.Error())
 			return nil
 		}
 
-		bytesData, err := ioutil.ReadFile(sPath)
+		_, sFileName = path.Split(sPath)
+		objHInfo.Name = filepath.Join(sSubFolder, sFileName)
+		objHeader, err := objZipWriter.CreateHeader(objHInfo)
+		if err != nil {
+			log.Println("[WARN] Compress.zipFolder() : failed 2 create filehead :", err.Error())
+			return nil
+		}
+
+		_, err = io.Copy(objHeader, objFile)
 		if err != nil {
 			log.Println("[WARN] Compress.zipFolder() : failed 2 read file=", sPath)
-			return nil
-		}
-
-		_, err = objInserter.Write(bytesData)
-		if err != nil {
-			log.Println("[WARN] Compress.zipFolder() : failed 2 write file into zip package :", sPath)
 			return nil
 		}
 
