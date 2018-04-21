@@ -7,12 +7,16 @@ package fserver
 
 import (
 	"archive/zip"
+	"bytes"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Package Initialization
@@ -124,6 +128,7 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 		return false
 	}
 
+	nToday := time.Now().Year()*100 + int(time.Now().Month())
 	objZipFile, err := os.Create(sDestFile)
 	objZipWriter := zip.NewWriter(objZipFile)
 	defer objZipFile.Close()
@@ -169,10 +174,30 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 			return nil
 		}
 
-		_, err = io.Copy(objHeader, objFile)
+		bytesData, err := ioutil.ReadAll(objFile)
 		if err != nil {
 			log.Println("[WARN] Compress.zipFolder() : failed 2 read file=", sPath)
 			return nil
+		}
+		for _, bLine := range bytes.Split(bytesData, []byte("\n")) {
+			sFirstFields := strings.Split(string(bLine), ",")[0]
+			if len(sFirstFields) <= 0 {
+				continue
+			}
+			nDate, err := strconv.Atoi(sFirstFields)
+			if err != nil {
+				continue
+			}
+			nDate = nDate / 100
+			if (nToday - nDate) > 1 {
+				continue
+			}
+
+			_, err = objHeader.Write(bLine)
+			if err != nil {
+				log.Println("[WARN] Compress.zipFolder() : failed 2 write zip file=", sPath)
+				return nil
+			}
 		}
 
 		return nil
