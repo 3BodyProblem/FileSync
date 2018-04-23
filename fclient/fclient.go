@@ -58,11 +58,14 @@ type ResourceList struct {
 
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
 type FileSyncClient struct {
-	ServerHost string              // Server IP + Port
-	Account    string              // Server Login Username
-	Password   string              // Server Login Password
-	TTL        int                 // Time To Live
-	objChannel chan DownloadStatus // Channel Of Download Task
+	ServerHost    string              // Server IP + Port
+	Account       string              // Server Login Username
+	Password      string              // Server Login Password
+	TTL           int                 // Time To Live
+	objChannel    chan DownloadStatus // Channel Of Download Task
+	ProgressFile  string              // Progress File Path
+	TaskCount     int                 // Task Count
+	CompleteCount int                 // Task Complete Count
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -95,7 +98,9 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	}
 
 	///////////////////////////// Check Tasks Status //////////////////////////////
-	log.Println("[INF] FileSyncClient.DoTasks() : Task Number = ", len(objMapTask))
+	pSelf.CompleteCount = 0
+	pSelf.TaskCount = len(objMapTask)
+	log.Println("[INF] FileSyncClient.DoTasks() : Task Number = ", pSelf.TaskCount)
 	for i := 0; i < pSelf.TTL; i++ {
 		select {
 		case objStatus := <-pSelf.objChannel:
@@ -104,6 +109,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 					objMapTask[objStatus.URI] = true // mark up: task completed
 					if objStatus.Status == ST_Completed {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
+						pSelf.dumpProgress(1)
 						if false == objUnzip.Unzip(objStatus.LocalPath, objStatus.URI) {
 							os.Remove(objStatus.LocalPath)
 						}
@@ -134,6 +140,8 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 			time.Sleep(1 * time.Second)
 		}
 	}
+
+	pSelf.dumpProgress(0)
 
 	log.Println("[INF] FileSyncClient.DoTasks() : Mission Completed ...... ")
 }
@@ -303,4 +311,40 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 
 		return true
 	}
+}
+
+// [method] dump progress status
+func (pSelf *FileSyncClient) dumpProgress(nAddRef int) bool {
+	var objXmlProgress struct {
+		XMLName    xml.Name `xml:"progress"`
+		Percentage struct {
+			XMLName   xml.Name `xml:"percentage"`
+			TotalTask int      `xml:"uri,attr"`
+			Progress  float32  `xml:"md5,attr"`
+			Update    string   `xml:"update,attr"`
+		}
+	}
+
+	pSelf.TaskCount = pSelf.TaskCount + nAddRef
+	objXmlProgress.Percentage.TotalTask = pSelf.TaskCount
+	objXmlProgress.Percentage.Progress = float32(pSelf.CompleteCount / pSelf.TaskCount)
+	objXmlProgress.Percentage.Update = time.Now().Format("2006-01-02 15:04:05")
+
+	if sResponse, err := xml.Marshal(&objXmlProgress); err != nil {
+		log.Println("[ERR] FileSyncClient.dumpProgress() :  cannot marshal xml object 2 string : ", err.Error())
+	} else {
+		objFile, err := os.Create(pSelf.ProgressFile)
+		defer objFile.Close()
+		if err != nil {
+			log.Println("[ERR] FileSyncClient.dumpProgress() :  cannot create progress file : ", pSelf.ProgressFile, err.Error())
+			return false
+		}
+
+		objFile.WriteString(xml.Header)
+		objFile.Write(sResponse)
+
+		return true
+	}
+
+	return false
 }
