@@ -106,13 +106,15 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 			return nil
 		}
 
+		var lstRecords []string // 5 minutes k-line
 		bytesData, err := ioutil.ReadAll(objFile)
 		if err != nil {
 			log.Println("[WARN] Compress.zipM5Folder() : failed 2 read file=", sPath)
 			return nil
 		}
 		for _, bLine := range bytes.Split(bytesData, []byte("\n")) {
-			sFirstFields := strings.Split(string(bLine), ",")[0]
+			lstRecords = strings.Split(string(bLine), ",")
+			sFirstFields := lstRecords[0]
 			if len(sFirstFields) <= 0 {
 				continue
 			}
@@ -124,6 +126,8 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 			if (nToday - nDate) > 1 {
 				continue
 			}
+
+			// cal. 5 minutes k-lines
 
 			_, err = objHeader.Write(bLine)
 			if err != nil {
