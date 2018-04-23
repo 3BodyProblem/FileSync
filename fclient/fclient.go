@@ -109,12 +109,14 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 					objMapTask[objStatus.URI] = true // mark up: task completed
 					if objStatus.Status == ST_Completed {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
-						pSelf.dumpProgress(1)
 						if false == objUnzip.Unzip(objStatus.LocalPath, objStatus.URI) {
 							os.Remove(objStatus.LocalPath)
+						} else {
+							pSelf.dumpProgress(1)
 						}
 					} else if objStatus.Status == ST_Ignore {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", objStatus.URI)
+						pSelf.dumpProgress(1)
 					} else if objStatus.Status == ST_Error {
 						log.Println("[ERR] FileSyncClient.DoTasks() : [Exception] -->", objStatus.URI)
 						os.Remove(objStatus.LocalPath)
@@ -285,7 +287,7 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 	httpRes, err := httpClient.Do(httpReq)
 
 	if err != nil {
-		log.Println("[ERR] FileSyncClient.fetchResList() :  error in response : ", sUrl, err.Error())
+		log.Println("[ERR] FileSyncClient.fetchResList() : error in response : ", sUrl, err.Error())
 		return false
 	}
 
@@ -293,7 +295,7 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 	defer httpRes.Body.Close()
 	body, err := ioutil.ReadAll(httpRes.Body)
 	if err != nil {
-		log.Println("[ERR] FileSyncClient.fetchResList() :  cannot read response : ", sUrl, err.Error())
+		log.Println("[ERR] FileSyncClient.fetchResList() : cannot read response : ", sUrl, err.Error())
 		return false
 	}
 
@@ -319,27 +321,28 @@ func (pSelf *FileSyncClient) dumpProgress(nAddRef int) bool {
 		XMLName    xml.Name `xml:"progress"`
 		Percentage struct {
 			XMLName   xml.Name `xml:"percentage"`
-			TotalTask int      `xml:"uri,attr"`
-			Progress  float32  `xml:"md5,attr"`
+			TotalTask int      `xml:"taskcount,attr"`
+			Progress  float32  `xml:"taskprogress,attr"`
 			Update    string   `xml:"update,attr"`
 		}
 	}
 
-	pSelf.TaskCount = pSelf.TaskCount + nAddRef
-	objXmlProgress.Percentage.TotalTask = pSelf.TaskCount
-	objXmlProgress.Percentage.Progress = float32(pSelf.CompleteCount / pSelf.TaskCount)
+	pSelf.CompleteCount = pSelf.CompleteCount + nAddRef
+	objXmlProgress.Percentage.TotalTask = pSelf.CompleteCount
+	objXmlProgress.Percentage.Progress = float32(pSelf.CompleteCount) / float32(pSelf.TaskCount)
 	objXmlProgress.Percentage.Update = time.Now().Format("2006-01-02 15:04:05")
 
 	if sResponse, err := xml.Marshal(&objXmlProgress); err != nil {
-		log.Println("[ERR] FileSyncClient.dumpProgress() :  cannot marshal xml object 2 string : ", err.Error())
+		log.Println("[ERR] FileSyncClient.dumpProgress() : cannot marshal xml object 2 string : ", err.Error())
 	} else {
 		objFile, err := os.Create(pSelf.ProgressFile)
 		defer objFile.Close()
 		if err != nil {
-			log.Println("[ERR] FileSyncClient.dumpProgress() :  cannot create progress file : ", pSelf.ProgressFile, err.Error())
+			log.Println("[ERR] FileSyncClient.dumpProgress() : cannot create progress file : ", pSelf.ProgressFile, err.Error())
 			return false
 		}
 
+		log.Println("[INF] FileSyncClient.dumpProgress() : progress : ", string(sResponse))
 		objFile.WriteString(xml.Header)
 		objFile.Write(sResponse)
 
