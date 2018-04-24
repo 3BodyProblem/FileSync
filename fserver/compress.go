@@ -8,12 +8,14 @@ package fserver
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -78,7 +80,12 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 		}
 
 		if f.IsDir() {
-			_, sSF := path.Split(sPath)
+			sSF := ""
+			if "windows" != runtime.GOOS {
+				_, sSF = path.Split(sPath)
+			} else {
+				sSF = sPath[strings.LastIndex(sPath, "\\")+1:]
+			}
 			sSubFolder = filepath.Join("MIN5", sSF)
 			return nil
 		}
@@ -98,7 +105,12 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 			return nil
 		}
 
-		_, sFileName := path.Split(sPath)
+		sFileName := ""
+		if "windows" != runtime.GOOS {
+			_, sFileName = path.Split(sPath)
+		} else {
+			sFileName = sPath[strings.LastIndex(sPath, "\\")+1:]
+		}
 		objHInfo.Name = filepath.Join(sSubFolder, sFileName)
 		objHeader, err := objZipWriter.CreateHeader(objHInfo)
 		if err != nil {
@@ -106,34 +118,91 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 			return nil
 		}
 
-		var lstRecords []string // 5 minutes k-line
+		var objMin5 struct {
+			Date         int     // date
+			Time         int     // time
+			Open         float64 // open price
+			High         float64 // high price
+			Low          float64 // low price
+			Close        float64 // close price
+			Settle       float64 // settle price
+			Amount       float64 // Amount
+			Volume       int64   // Volume
+			OpenInterest int64   // Open Interest
+			NumTrades    int64   // Trade Number
+			Voip         float64 // Voip
+		} // 5 minutes k-line
+
 		bytesData, err := ioutil.ReadAll(objFile)
 		if err != nil {
 			log.Println("[WARN] Compress.zipM5Folder() : failed 2 read file=", sPath)
 			return nil
 		}
-		for _, bLine := range bytes.Split(bytesData, []byte("\n")) {
-			lstRecords = strings.Split(string(bLine), ",")
-			sFirstFields := lstRecords[0]
-			if len(sFirstFields) <= 0 {
+		bLines := bytes.Split(bytesData, []byte("\n"))
+		nCount := len(bLines)
+		for i, bLine := range bLines {
+			lstRecords := strings.Split(string(bLine), ",")
+			if len(lstRecords[0]) <= 0 {
 				continue
 			}
-			nDate, err := strconv.Atoi(sFirstFields)
+			objMin5.Date, err = strconv.Atoi(lstRecords[0])
 			if err != nil {
 				continue
 			}
-			nDate = nDate / 10000
-			if (nToday - nDate) > 1 {
+
+			if (nToday - (objMin5.Date / 10000)) > 1 {
 				continue
 			}
 
 			// cal. 5 minutes k-lines
+			nCurTime, _ := strconv.Atoi(lstRecords[1])
+			objMin5.Time = (5 - nCurTime%5) + nCurTime
+			objMin5.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
+			objMin5.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
+			objMin5.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
+			if nCurTime > objMin5.Time { // begin
+				if 0 != i {
+					_, err = objHeader.Write([]byte(fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)))
+					if err != nil {
+						log.Println("[WARN] Compress.zipM5Folder() : failed 2 write zip file=", sPath)
+						return nil
+					}
+				}
 
-			_, err = objHeader.Write(bLine)
-			if err != nil {
-				log.Println("[WARN] Compress.zipM5Folder() : failed 2 write zip file=", sPath)
-				return nil
+				objMin5.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
+				objMin5.High, _ = strconv.ParseFloat(lstRecords[3], 64)
+				objMin5.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
+				objMin5.Amount, _ = strconv.ParseFloat(lstRecords[7], 64)
+				objMin5.Volume, _ = strconv.ParseInt(lstRecords[8], 10, 64)
+				objMin5.OpenInterest, _ = strconv.ParseInt(lstRecords[9], 10, 64)
+				objMin5.NumTrades, _ = strconv.ParseInt(lstRecords[10], 10, 64)
+			} else {
+				nHigh, _ := strconv.ParseFloat(lstRecords[3], 64)
+				nLow, _ := strconv.ParseFloat(lstRecords[4], 64)
+				if nHigh > objMin5.High {
+					objMin5.High = nHigh
+				}
+				if nLow > objMin5.Low {
+					objMin5.Low = nLow
+				}
+				nAmount, _ := strconv.ParseFloat(lstRecords[7], 64)
+				objMin5.Amount += nAmount
+				nVolume, _ := strconv.ParseInt(lstRecords[8], 10, 64)
+				objMin5.Volume += nVolume
+				nOpenInterest, _ := strconv.ParseInt(lstRecords[9], 10, 64)
+				objMin5.OpenInterest += nOpenInterest
+				nNumTrades, _ := strconv.ParseInt(lstRecords[10], 10, 64)
+				objMin5.NumTrades += nNumTrades
 			}
+
+			if i == (nCount - 1) {
+				_, err = objHeader.Write([]byte(fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)))
+				if err != nil {
+					log.Println("[WARN] Compress.zipM5Folder() : failed 2 write zip file=", sPath)
+					return nil
+				}
+			}
+
 		}
 
 		return nil
@@ -174,7 +243,12 @@ func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
 		}
 
 		if f.IsDir() {
-			_, sSF := path.Split(sPath)
+			sSF := ""
+			if "windows" != runtime.GOOS {
+				_, sSF = path.Split(sPath)
+			} else {
+				sSF = sPath[strings.LastIndex(sPath, "\\")+1:]
+			}
 			sSubFolder = filepath.Join("MIN", sSF)
 			return nil
 		}
@@ -194,7 +268,12 @@ func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
 			return nil
 		}
 
-		_, sFileName := path.Split(sPath)
+		sFileName := ""
+		if "windows" != runtime.GOOS {
+			_, sFileName = path.Split(sPath)
+		} else {
+			sFileName = sPath[strings.LastIndex(sPath, "\\")+1:]
+		}
 		objHInfo.Name = filepath.Join(sSubFolder, sFileName)
 		objHeader, err := objZipWriter.CreateHeader(objHInfo)
 		if err != nil {
@@ -275,7 +354,12 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 		}
 
 		defer objFile.Close()
-		_, sFileName := path.Split(sDestFile)
+		sFileName := ""
+		if "windows" != runtime.GOOS {
+			_, sFileName = path.Split(sDestFile)
+		} else {
+			sFileName = sDestFile[strings.LastIndex(sDestFile, "\\")+1:]
+		}
 		sSubFolder := strings.Split(sFileName, ".")[0]
 		info, err := objFile.Stat()
 		objHInfo, err := zip.FileInfoHeader(info)
@@ -284,7 +368,11 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 			return nil
 		}
 
-		_, sFileName = path.Split(sPath)
+		if "windows" != runtime.GOOS {
+			_, sFileName = path.Split(sPath)
+		} else {
+			sFileName = sPath[strings.LastIndex(sPath, "\\")+1:]
+		}
 		objHInfo.Name = filepath.Join(sSubFolder, sFileName)
 		objHeader, err := objZipWriter.CreateHeader(objHInfo)
 		if err != nil {
