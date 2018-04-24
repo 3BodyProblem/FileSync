@@ -156,12 +156,13 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 
 			// cal. 5 minutes k-lines
 			nCurTime, _ := strconv.Atoi(lstRecords[1])
-			objMin5.Time = (5 - nCurTime%5) + nCurTime
 			objMin5.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
 			objMin5.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
 			objMin5.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
+			//			log.Println("aaa...", i, nCurTime, objMin5.Time)
 			if nCurTime > objMin5.Time { // begin
 				if 0 != i {
+					//					log.Println("a", i)
 					_, err = objHeader.Write([]byte(fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)))
 					if err != nil {
 						log.Println("[WARN] Compress.zipM5Folder() : failed 2 write zip file=", sPath)
@@ -169,6 +170,7 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 					}
 				}
 
+				objMin5.Time = (5 - nCurTime%5) + nCurTime
 				objMin5.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
 				objMin5.High, _ = strconv.ParseFloat(lstRecords[3], 64)
 				objMin5.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
@@ -195,6 +197,7 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 				objMin5.NumTrades += nNumTrades
 			}
 
+			//			log.Println("z", i, (nCount - 1))
 			if i == (nCount - 1) {
 				_, err = objHeader.Write([]byte(fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)))
 				if err != nil {
