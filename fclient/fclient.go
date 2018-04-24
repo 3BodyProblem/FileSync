@@ -191,7 +191,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 		// save resource file 3 disk
 		sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
 		sLocalFile := filepath.Join(sLocalFolder, sUri)
-		err = os.MkdirAll(path.Dir(sLocalFile), 0777)
+		err = os.MkdirAll(path.Dir(sLocalFile), 0711)
 		if err != nil {
 			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
 			return
