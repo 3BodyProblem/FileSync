@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -29,6 +30,10 @@ type Uncompress struct {
 func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 	// open zip file
 	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
+	if "windows" == runtime.GOOS {
+		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "\\")])
+	}
+
 	objZipReader, err := zip.OpenReader(sZipSrcPath)
 	if err != nil {
 		log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot open zip file :", sZipSrcPath, err.Error())
@@ -50,6 +55,10 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			continue
 		}
 		sTargetFolder := path.Dir(sTargetFile)
+		if "windows" == runtime.GOOS {
+			sTargetFolder = sTargetFile[:strings.LastIndex(sTargetFile, "\\")]
+			log.Println(sTargetFolder)
+		}
 		err = os.MkdirAll(sTargetFolder, 0755)
 		if err != nil {
 			log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 zip file, file name =", sTargetFile)

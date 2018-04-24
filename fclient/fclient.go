@@ -17,6 +17,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -191,7 +192,11 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 		// save resource file 3 disk
 		sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
 		sLocalFile := filepath.Join(sLocalFolder, sUri)
-		err = os.MkdirAll(path.Dir(sLocalFile), 0711)
+		sMkFolder := path.Dir(sLocalFile)
+		if "windows" == runtime.GOOS {
+			sMkFolder = sLocalFile[:strings.LastIndex(sLocalFile, "\\")]
+		}
+		err = os.MkdirAll(sMkFolder, 0711)
 		if err != nil {
 			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
 			return
