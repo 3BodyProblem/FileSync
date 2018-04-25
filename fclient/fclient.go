@@ -111,6 +111,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 					if objStatus.Status == ST_Completed {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
 						if false == objUnzip.Unzip(objStatus.LocalPath, objStatus.URI) {
+							log.Println("[INF] FileSyncClient.DoTasks() : [RemoveCache] -->", objStatus.URI)
 							os.Remove(objStatus.LocalPath)
 						} else {
 							pSelf.dumpProgress(1)

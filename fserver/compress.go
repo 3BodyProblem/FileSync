@@ -39,7 +39,7 @@ type Compress struct {
 	TargetFolder string // Root Folder
 }
 
-func tarGzDir(srcDirPath string, recPath string, tw *tar.Writer, funcAction func(tarw *tar.Writer, filew *os.File) bool) bool {
+func tarGzDir(srcDirPath string, recPath string, tw *tar.Writer, sReplacePrefix string, funcAction func(tarw *tar.Writer, filew *os.File) bool) bool {
 	// Open source diretory
 	dir, err := os.Open(srcDirPath)
 	if err != nil {
@@ -60,26 +60,27 @@ func tarGzDir(srcDirPath string, recPath string, tw *tar.Writer, funcAction func
 		if fi.IsDir() {
 			// Directory
 			// (Directory won't add unitl all subfiles are added)
-			fmt.Printf("Adding path...%s\\n", curPath)
-			tarGzDir(curPath, recPath+"/"+fi.Name(), tw, funcAction)
-		} else {
-			// File
-			fmt.Printf("Adding file...%s\\n", curPath)
+			tarGzDir(curPath, recPath+"/"+fi.Name(), tw, sReplacePrefix, funcAction)
 		}
 
-		tarGzFile(curPath, recPath+"/"+fi.Name(), tw, fi, funcAction)
+		tarGzFile(curPath, recPath+"/"+fi.Name(), tw, fi, sReplacePrefix, funcAction)
 	}
 
 	return true
 }
 
-func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, funcAction func(tarw *tar.Writer, filew *os.File) bool) bool {
+func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, sReplacePrefix string, funcAction func(tarw *tar.Writer, filew *os.File) bool) bool {
 	if fi.IsDir() {
 		// Create tar header
 		hdr := new(tar.Header)
 		// if last character of header name is '/' it also can be directory
 		// but if you don't set Typeflag, error will occur when you untargz
 		hdr.Name = recPath + "/"
+
+		if "MIN5" == sReplacePrefix {
+			hdr.Name = strings.Replace(hdr.Name, "MIN/", sReplacePrefix+"/", -1)
+		}
+
 		hdr.Typeflag = tar.TypeDir
 		hdr.Size = 0
 		//hdr.Mode = 0755 | c_ISDIR
@@ -102,6 +103,11 @@ func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, f
 		// Create tar header
 		hdr := new(tar.Header)
 		hdr.Name = recPath
+
+		if "MIN5" == sReplacePrefix {
+			hdr.Name = strings.Replace(hdr.Name, "MIN/", sReplacePrefix+"/", -1)
+		}
+
 		hdr.Size = fi.Size()
 		hdr.Mode = int64(fi.Mode())
 		hdr.ModTime = fi.ModTime()
@@ -203,146 +209,7 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 		log.Println("[ERR] Compress.zipM5Folder() : failed 2 create zip file :", sDestFile, err.Error())
 		return false
 	}
-	/*
-		err = filepath.Walk(sSrcFolder, func(sPath string, f os.FileInfo, err error) error {
-			if f == nil {
-				return err
-			}
 
-			if f.IsDir() {
-				sSF := ""
-				if "windows" != runtime.GOOS {
-					_, sSF = path.Split(sPath)
-				} else {
-					sSF = sPath[strings.LastIndex(sPath, "\\")+1:]
-				}
-				sSubFolder = filepath.Join("MIN5", sSF)
-				return nil
-			}
-
-			// get absolute path of URI in local machine
-			objFile, err := os.Open(sPath)
-			if err != nil {
-				log.Println("[WARN] Compress.zipM5Folder() : local file is not exist :", sPath)
-				return nil
-			}
-
-			defer objFile.Close()
-			info, err := objFile.Stat()
-			objHInfo, err := zip.FileInfoHeader(info)
-			if err != nil {
-				log.Println("[WARN] Compress.zipM5Folder() : failed 2 create file info head :", err.Error())
-				return nil
-			}
-
-			sFileName := ""
-			if "windows" != runtime.GOOS {
-				_, sFileName = path.Split(sPath)
-			} else {
-				sFileName = sPath[strings.LastIndex(sPath, "\\")+1:]
-			}
-			objHInfo.Name = filepath.Join(sSubFolder, sFileName)
-			objHeader, err := objZipWriter.CreateHeader(objHInfo)
-			if err != nil {
-				log.Println("[WARN] Compress.zipM5Folder() : failed 2 create filehead :", err.Error())
-				return nil
-			}
-
-			var objMin5 struct {
-				Date         int     // date
-				Time         int     // time
-				Open         float64 // open price
-				High         float64 // high price
-				Low          float64 // low price
-				Close        float64 // close price
-				Settle       float64 // settle price
-				Amount       float64 // Amount
-				Volume       int64   // Volume
-				OpenInterest int64   // Open Interest
-				NumTrades    int64   // Trade Number
-				Voip         float64 // Voip
-			} // 5 minutes k-line
-
-			bytesData, err := ioutil.ReadAll(objFile)
-			if err != nil {
-				log.Println("[WARN] Compress.zipM5Folder() : failed 2 read file=", sPath)
-				return nil
-			}
-
-			objZlibWriter, err := zlib.NewWriterLevel(objHeader, zlib.BestCompression)
-			bLines := bytes.Split(bytesData, []byte("\n"))
-			nCount := len(bLines)
-			for i, bLine := range bLines {
-				lstRecords := strings.Split(string(bLine), ",")
-				if len(lstRecords[0]) <= 0 {
-					continue
-				}
-				objMin5.Date, err = strconv.Atoi(lstRecords[0])
-				if err != nil {
-					continue
-				}
-
-				if (nToday - (objMin5.Date / 10000)) > 1 {
-					continue
-				}
-
-				// cal. 5 minutes k-lines
-				nCurTime, _ := strconv.Atoi(lstRecords[1])
-				objMin5.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
-				objMin5.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
-				objMin5.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
-				//			log.Println("aaa...", i, nCurTime, objMin5.Time)
-				if nCurTime > objMin5.Time { // begin
-					if 0 != i {
-						//					log.Println("a", i)
-						_, err = objZlibWriter.Write([]byte(fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)))
-						if err != nil {
-							log.Println("[WARN] Compress.zipM5Folder() : failed 2 write zip file=", sPath)
-							return nil
-						}
-					}
-
-					objMin5.Time = (5 - nCurTime%5) + nCurTime
-					objMin5.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
-					objMin5.High, _ = strconv.ParseFloat(lstRecords[3], 64)
-					objMin5.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
-					objMin5.Amount, _ = strconv.ParseFloat(lstRecords[7], 64)
-					objMin5.Volume, _ = strconv.ParseInt(lstRecords[8], 10, 64)
-					objMin5.OpenInterest, _ = strconv.ParseInt(lstRecords[9], 10, 64)
-					objMin5.NumTrades, _ = strconv.ParseInt(lstRecords[10], 10, 64)
-				} else {
-					nHigh, _ := strconv.ParseFloat(lstRecords[3], 64)
-					nLow, _ := strconv.ParseFloat(lstRecords[4], 64)
-					if nHigh > objMin5.High {
-						objMin5.High = nHigh
-					}
-					if nLow > objMin5.Low {
-						objMin5.Low = nLow
-					}
-					nAmount, _ := strconv.ParseFloat(lstRecords[7], 64)
-					objMin5.Amount += nAmount
-					nVolume, _ := strconv.ParseInt(lstRecords[8], 10, 64)
-					objMin5.Volume += nVolume
-					nOpenInterest, _ := strconv.ParseInt(lstRecords[9], 10, 64)
-					objMin5.OpenInterest += nOpenInterest
-					nNumTrades, _ := strconv.ParseInt(lstRecords[10], 10, 64)
-					objMin5.NumTrades += nNumTrades
-				}
-
-				//			log.Println("z", i, (nCount - 1))
-				if i == (nCount - 1) {
-					_, err = objZlibWriter.Write([]byte(fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)))
-					if err != nil {
-						log.Println("[WARN] Compress.zipM5Folder() : failed 2 write zip file=", sPath)
-						return nil
-					}
-				}
-
-			}
-
-			return nil
-		})
-	*/
 	m5filter := func(tarw *tar.Writer, filew *os.File) bool {
 		var nToday int = time.Now().Year()
 		var objMin5 struct {
@@ -439,7 +306,7 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 
 	m5filter = nil
 	if "windows" != runtime.GOOS {
-		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, m5filter) {
+		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "MIN5", m5filter) {
 			return false
 		}
 	} else {
@@ -449,7 +316,7 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 			sRecFolder = lstLastFolder[len(lstLastFolder)-2]
 		}
 
-		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, nil) {
+		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, "MIN5", m5filter) {
 			return false
 		}
 	}
@@ -514,7 +381,7 @@ func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
 	}
 
 	if "windows" != runtime.GOOS {
-		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, m1filter) {
+		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "", m1filter) {
 			return false
 		}
 	} else {
@@ -524,7 +391,7 @@ func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
 			sRecFolder = lstLastFolder[len(lstLastFolder)-2]
 		}
 
-		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, m1filter) {
+		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, "", m1filter) {
 			return false
 		}
 	}
@@ -567,7 +434,7 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 	}
 
 	if "windows" != runtime.GOOS {
-		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, nil) {
+		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "", nil) {
 			return false
 		}
 	} else {
@@ -577,7 +444,7 @@ func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
 			sRecFolder = lstLastFolder[len(lstLastFolder)-2]
 		}
 
-		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, nil) {
+		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, "", nil) {
 			return false
 		}
 	}
