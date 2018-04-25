@@ -87,9 +87,11 @@ func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, s
 		hdr.Mode = int64(fi.Mode())
 		hdr.ModTime = fi.ModTime()
 
+		log.Println("11111111", hdr.Name)
 		// Write hander
 		err := tw.WriteHeader(hdr)
 		if err != nil {
+			log.Println("aaaaaaaaaaaaaaaa", hdr.Name, err.Error())
 			return false
 		}
 	} else {
@@ -112,9 +114,11 @@ func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, s
 		hdr.Mode = int64(fi.Mode())
 		hdr.ModTime = fi.ModTime()
 
+		log.Println("2222222", hdr.Name)
 		// Write hander
 		err = tw.WriteHeader(hdr)
 		if err != nil {
+			log.Println("bbbbbbbbbbbbbbb", hdr.Name, err.Error())
 			return false
 		}
 
