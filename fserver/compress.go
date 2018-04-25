@@ -8,6 +8,7 @@ package fserver
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -33,21 +34,52 @@ type Compress struct {
 ///////////////////////////////////// [OutterMethod]
 // [method] Zip
 func (pSelf *Compress) Zip(sResName string, objDataSrc *DataSourceConfig) bool {
+	var sZipFile string = ""
 	var sDataType string = strings.ToLower(sResName[strings.Index(sResName, "."):])              // data type (d1/m1/m5)
 	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.zip)
 	log.Printf("[INF] Compress.Zip() : [Compressing] ExchangeCode:%s, DataType:%s, Folder:%s", objDataSrc.MkID, sDataType, objDataSrc.Folder)
 
 	switch {
 	case (objDataSrc.MkID == "sse" && sDataType == ".d1") || (objDataSrc.MkID == "szse" && sDataType == ".d1"):
-		pSelf.zipFolder(filepath.Join(sDestFolder, "DAY.zip"), objDataSrc.Folder)
+		sZipFile = filepath.Join(sDestFolder, "DAY.zip")
+		if false == pSelf.zipFolder(sZipFile, objDataSrc.Folder) {
+			return false
+		}
 	case (objDataSrc.MkID == "sse" && sDataType == ".m1") || (objDataSrc.MkID == "szse" && sDataType == ".m1"):
-		pSelf.zipM1Folder(filepath.Join(sDestFolder, "MIN.zip"), objDataSrc.Folder)
+		sZipFile = filepath.Join(sDestFolder, "MIN.zip")
+		if false == pSelf.zipM1Folder(sZipFile, objDataSrc.Folder) {
+			return false
+		}
 	case (objDataSrc.MkID == "sse" && sDataType == ".m5") || (objDataSrc.MkID == "szse" && sDataType == ".m5"):
-		pSelf.zipM5Folder(filepath.Join(sDestFolder, "MIN5.zip"), objDataSrc.Folder)
+		sZipFile = filepath.Join(sDestFolder, "MIN5.zip")
+		if false == pSelf.zipM5Folder(sZipFile, objDataSrc.Folder) {
+			return false
+		}
 	default:
 		log.Printf("[ERR] Compress.Zip() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
 		return false
 	}
+
+	objDataSrc.Folder = sZipFile
+	log.Println(objDataSrc.Folder)
+	// get absolute path of URI in local machine
+	objFile, err := os.Open(sZipFile)
+	if err != nil {
+		log.Println("[WARN] FileSyncServer.handleList() : local file is not exist :", sZipFile)
+		return false
+	}
+
+	// parepare 2 generate md5
+	defer objFile.Close()
+	objMD5Hash := md5.New()
+	if _, err := io.Copy(objMD5Hash, objFile); err != nil {
+		log.Printf("[WARN] FileSyncServer.handleList() : failed 2 generate MD5 : %s : %s", sZipFile, err.Error())
+		return false
+	}
+
+	// generate MD5 string
+	var byteMD5 []byte
+	objDataSrc.MD5 = fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5))
 
 	return true
 }

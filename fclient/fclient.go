@@ -226,7 +226,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
 func (pSelf *FileSyncClient) login2Server() bool {
 	// generate Login Url string
 	var sUrl string = fmt.Sprintf("http://%s/login?account=%s&password=%s", pSelf.ServerHost, pSelf.Account, pSelf.Password)
-	log.Println("[INF] FileSyncClient.login2Server() : /login?account=", pSelf.Account)
+	log.Printf("[INF] FileSyncClient.login2Server() : http://%s/login?account=%s", pSelf.ServerHost, pSelf.Account)
 
 	// declare http request variable
 	httpClient := http.Client{

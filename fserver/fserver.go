@@ -7,17 +7,11 @@ package fserver
 
 import (
 	"./github.com/astaxie/beego/session"
-	"crypto/md5"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 var (
@@ -31,12 +25,25 @@ func init() {
 	go globalSessions.GC()
 }
 
+type ResDownload struct {
+	XMLName xml.Name `xml:"download"`
+	URI     string   `xml:"uri,attr"`
+	MD5     string   `xml:"md5,attr"`
+	UPDATE  string   `xml:"update,attr"`
+}
+
+type ResourceList struct {
+	XMLName  xml.Name `xml:"resource"`
+	Download []ResDownload
+} // Build Response Xml Structure
+
 ///////////////////////////////////// HTTP Server Engine Stucture/Class
 type FileSyncServer struct {
-	ServerHost string // Server IP + Port
-	Account    string // Server Login Username
-	Password   string // Server Login Password
-	SyncFolder string // Sync File Folder
+	ServerHost      string       // Server IP + Port
+	Account         string       // Server Login Username
+	Password        string       // Server Login Password
+	SyncFolder      string       // Sync File Folder
+	objResourceList ResourceList // Resources Table
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -53,6 +60,10 @@ func (pSelf *FileSyncServer) RunServer() {
 	log.Println("[INF] FileSyncServer.RunServer() : Server Is Available [", pSelf.ServerHost, "] .........")
 	http.ListenAndServe(pSelf.ServerHost, nil)
 	log.Println("[INF] FileSyncServer.RunServer() : Server Has Halted.........")
+}
+
+func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
+	pSelf.objResourceList = *refResList
 }
 
 ///////////////////////////////////// [InnerMethod]
@@ -208,57 +219,8 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	type ResDownload struct {
-		XMLName xml.Name `xml:"download"`
-		URI     string   `xml:"uri,attr"`
-		MD5     string   `xml:"md5,attr"`
-		UPDATE  string   `xml:"update,attr"`
-	}
-
-	var objResourceList struct {
-		XMLName  xml.Name `xml:"resource"`
-		Download []ResDownload
-	} // Build Response Xml Structure
-
-	err := filepath.Walk(pSelf.SyncFolder, func(path string, f os.FileInfo, err error) error {
-		if f == nil {
-			return err
-		}
-
-		if f.IsDir() {
-			return nil
-		}
-
-		// get absolute path of URI in local machine
-		objFile, err := os.Open(path)
-		if err != nil {
-			log.Println("[WARN] FileSyncServer.handleList() : local file is not exist :", path)
-			return nil
-		}
-
-		// parepare 2 generate md5
-		defer objFile.Close()
-		objMD5Hash := md5.New()
-		if _, err := io.Copy(objMD5Hash, objFile); err != nil {
-			log.Printf("[WARN] FileSyncServer.handleList() : failed 2 generate MD5 : %s : %s", path, err.Error())
-			return nil
-		}
-
-		// generate MD5 string
-		var byteMD5 []byte
-		var sMD5Str string = fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5))
-
-		objResourceList.Download = append(objResourceList.Download, ResDownload{URI: path, MD5: strings.ToLower(sMD5Str), UPDATE: time.Now().Format("2006-01-02 15:04:05")})
-
-		return nil
-	})
-
-	if err != nil {
-		fmt.Fprintf(resp, "%s%s", xml.Header, err.Error())
-	}
-
 	// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
-	if sResponse, err := xml.Marshal(&objResourceList); err != nil {
+	if sResponse, err := xml.Marshal(&pSelf.objResourceList); err != nil {
 		fmt.Fprintf(resp, "%s")
 	} else {
 		fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))

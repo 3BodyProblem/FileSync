@@ -31,6 +31,7 @@ type FileScheduler struct {
 	DataSourceConfig map[string]DataSourceConfig // Data Source Config Of Markets
 	BuildTime        int                         // Resources' Build Time
 	LastUpdateTime   time.Time                   // Last Updatetime
+	RefSyncSvr       *FileSyncServer             // File SyncSvr Pointer
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -97,17 +98,22 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 	// need 2 initialize resouces
 	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
 		if objNowTime.After(objBuildTime) == true {
+			var objNewResList ResourceList
 			var objZipCompress Compress = Compress{TargetFolder: pSelf.SyncFolder}
 			log.Printf("[INF] FileScheduler.buildSyncResource() : (BuildTime=%s) Building Sync Resources ......", objBuildTime.Format("2006-01-02 15:04:05"))
 
 			pSelf.LastUpdateTime = time.Now() // update time
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
 				if true == objZipCompress.Zip(sResName, &objDataSrcCfg) {
+					objNewResList.Download = append(objNewResList.Download, ResDownload{URI: objDataSrcCfg.Folder, MD5: strings.ToLower(objDataSrcCfg.MD5), UPDATE: pSelf.LastUpdateTime.Format("2006-01-02 15:04:05")})
 					log.Println("[INF] FileScheduler.buildSyncResource() : [OK] ZipFile : ", objDataSrcCfg.Folder)
 				} else {
 					log.Println("[WARN] FileScheduler.buildSyncResource() : [FAILURE] ZipFile : ", objDataSrcCfg.Folder)
+					return false
 				}
 			}
+
+			pSelf.RefSyncSvr.SetResList(&objNewResList)
 
 			log.Println("[INF] FileScheduler.buildSyncResource() : Sync Resources Builded! ......")
 		}

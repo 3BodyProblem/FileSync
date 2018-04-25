@@ -57,7 +57,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		sTargetFolder := path.Dir(sTargetFile)
 		if "windows" == runtime.GOOS {
 			sTargetFolder = sTargetFile[:strings.LastIndex(sTargetFile, "\\")]
-			log.Println(sTargetFolder)
 		}
 		err = os.MkdirAll(sTargetFolder, 0755)
 		if err != nil {
