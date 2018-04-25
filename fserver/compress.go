@@ -304,7 +304,6 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 		return true
 	}
 
-	m5filter = nil
 	if "windows" != runtime.GOOS {
 		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "MIN5", m5filter) {
 			return false
