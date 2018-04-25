@@ -102,10 +102,9 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 			var objZipCompress Compress = Compress{TargetFolder: pSelf.SyncFolder}
 			log.Printf("[INF] FileScheduler.buildSyncResource() : (BuildTime=%s) Building Sync Resources ......", objBuildTime.Format("2006-01-02 15:04:05"))
 
-			pSelf.LastUpdateTime = time.Now() // update time
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
 				if true == objZipCompress.Zip(sResName, &objDataSrcCfg) {
-					objNewResList.Download = append(objNewResList.Download, ResDownload{URI: objDataSrcCfg.Folder, MD5: strings.ToLower(objDataSrcCfg.MD5), UPDATE: pSelf.LastUpdateTime.Format("2006-01-02 15:04:05")})
+					objNewResList.Download = append(objNewResList.Download, ResDownload{URI: objDataSrcCfg.Folder, MD5: strings.ToLower(objDataSrcCfg.MD5), UPDATE: time.Now().Format("2006-01-02 15:04:05")})
 					log.Println("[INF] FileScheduler.buildSyncResource() : [OK] ZipFile : ", objDataSrcCfg.Folder)
 				} else {
 					log.Println("[WARN] FileScheduler.buildSyncResource() : [FAILURE] ZipFile : ", objDataSrcCfg.Folder)
@@ -114,6 +113,7 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 			}
 
 			pSelf.RefSyncSvr.SetResList(&objNewResList)
+			pSelf.LastUpdateTime = time.Now() // update time
 
 			log.Println("[INF] FileScheduler.buildSyncResource() : Sync Resources Builded! ......")
 		}

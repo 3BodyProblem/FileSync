@@ -8,6 +8,7 @@ package fserver
 import (
 	"archive/zip"
 	"bytes"
+	//"compress/zlib"
 	"crypto/md5"
 	"fmt"
 	"io"
