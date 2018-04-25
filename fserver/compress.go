@@ -55,15 +55,15 @@ func tarGzDir(srcDirPath string, recPath string, tw *tar.Writer, sReplacePrefix 
 
 	for _, fi := range fis {
 		// Append path
-		curPath := srcDirPath + "/" + fi.Name()
+		curPath := path.Join(srcDirPath, fi.Name())
 		// Check it is directory or file
 		if fi.IsDir() {
 			// Directory
 			// (Directory won't add unitl all subfiles are added)
-			tarGzDir(curPath, recPath+"/"+fi.Name(), tw, sReplacePrefix, funcAction)
+			tarGzDir(curPath, path.Join(recPath, fi.Name()), tw, sReplacePrefix, funcAction)
 		}
 
-		tarGzFile(curPath, recPath+"/"+fi.Name(), tw, fi, sReplacePrefix, funcAction)
+		tarGzFile(curPath, path.Join(recPath, fi.Name()), tw, fi, sReplacePrefix, funcAction)
 	}
 
 	return true
