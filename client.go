@@ -56,6 +56,7 @@ func main() {
 	}
 
 	//////////////// Declare && Active FileSync Server / File Scheduler
+	log.Println("[INF] [Ver] ######### 1.0.1 ####################")
 	log.Println("[INF] [Begin] ##################################")
 
 	objSyncClient := &fclient.FileSyncClient{ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL, ProgressFile: sProgressFile}

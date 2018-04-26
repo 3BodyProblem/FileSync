@@ -52,6 +52,7 @@ func main() {
 	}
 
 	//////////////// Declare && Active FileSync Server / File Scheduler
+	log.Println("[INF] [Ver] ######## 1.0.1 #####################")
 	log.Println("[INF] [Begin] ##################################")
 
 	objFileScheduler := &fserver.FileScheduler{XmlCfgPath: sXmlCfg}
