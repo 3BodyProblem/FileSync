@@ -43,17 +43,11 @@ func (pSelf *FComparison) Compare() bool {
 	sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
 	log.Printf("[INF] FComparison.Compare() : [Comparing]    (%s)   VS   (%s) ", pSelf.URI, filepath.Join(sLocalFolder, pSelf.URI))
 
-	err = os.MkdirAll(sLocalFolder, 0777)
-	if err != nil {
-		log.Printf("[WARN] FComparison.Compare() : failed 2 create folder : %s : %s", sLocalFolder, err.Error())
-		return false
-	}
-
 	// get absolute path of URI in local machine
 	sLocalFile := filepath.Join(sLocalFolder, pSelf.URI)
 	objFile, err := os.Open(sLocalFile)
 	if err != nil {
-		log.Println("[INF] FComparison.Compare() : local file is not exist :", sLocalFile)
+		log.Println("[INF] FComparison.Compare() : local resource is not exist :", sLocalFile, err.Error())
 		return false
 	}
 
@@ -61,7 +55,7 @@ func (pSelf *FComparison) Compare() bool {
 	defer objFile.Close()
 	objMD5Hash := md5.New()
 	if _, err := io.Copy(objMD5Hash, objFile); err != nil {
-		log.Printf("[WARN] FComparison.Compare() : failed 2 generate MD5 : %s : %s", sLocalFolder, err.Error())
+		log.Printf("[WARN] FComparison.Compare() : failed 2 generate MD5 : %s : %s", sLocalFile, err.Error())
 		return false
 	}
 
@@ -71,7 +65,7 @@ func (pSelf *FComparison) Compare() bool {
 
 	// result
 	if strings.ToLower(pSelf.MD5) != strings.ToLower(sMD5Str) {
-		log.Printf("[INF] FComparison.Compare() : found a discrepancy between md5 of server(md5:%s) && client(md5:%s)", strings.ToLower(pSelf.MD5), strings.ToLower(sMD5Str))
+		log.Printf("[INF] FComparison.Compare() : found a discrepancy of md5 between server(md5:%s) && client(md5:%s)", strings.ToLower(pSelf.MD5), strings.ToLower(sMD5Str))
 		return false
 	}
 
