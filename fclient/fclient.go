@@ -76,7 +76,6 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	// Variable Definition
 	var objResourceList ResourceList       // uri list object
 	var objMapTask = make(map[string]bool) // map object [URI]true:sucess?false:failure
-	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
 
 	// login
 	if false == pSelf.login2Server() {
@@ -95,7 +94,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	defer close(pSelf.objChannel) // defer this operation 2 release the channel object.
 	for _, objRes := range objResourceList.Download {
 		objMapTask[objRes.URI] = false
-		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE)
+		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder)
 	}
 
 	///////////////////////////// Check Tasks Status //////////////////////////////
@@ -109,13 +108,8 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 				if objStatus.Status == ST_Completed || objStatus.Status == ST_Ignore {
 					objMapTask[objStatus.URI] = true // mark up: task completed
 					if objStatus.Status == ST_Completed {
-						log.Println("[INF] FileSyncClient.DoTasks() : [Downloaded] -->", objStatus.URI)
-						if false == objUnzip.Unzip(objStatus.LocalPath, objStatus.URI) {
-							log.Println("[INF] FileSyncClient.DoTasks() : [RemoveCache] -->", objStatus.URI)
-							os.Remove(objStatus.LocalPath)
-						} else {
-							pSelf.dumpProgress(1)
-						}
+						log.Println("[INF] FileSyncClient.DoTasks() : [Complete] -->", objStatus.URI)
+						pSelf.dumpProgress(1)
 					} else if objStatus.Status == ST_Ignore {
 						log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", objStatus.URI)
 						pSelf.dumpProgress(1)
@@ -158,11 +152,19 @@ type DownloadStatus struct {
 	LocalPath string         // File Path In Disk
 }
 
-func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime string) {
+func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder string) {
 	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
+	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
+
 	defer func() {
+		if ST_Completed == nTaskStatus {
+			if false == objUnzip.Unzip(sLocalPath, sUri) {
+				nTaskStatus = ST_Error
+			}
+		}
+
 		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath} // Mission Finished!
 	}()
 
