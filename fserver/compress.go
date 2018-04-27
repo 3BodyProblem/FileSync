@@ -148,6 +148,11 @@ func (pSelf *Compress) Zip(sResName string, objDataSrc *DataSourceConfig) bool {
 	log.Printf("[INF] Compress.Zip() : [Compressing] ExchangeCode:%s, DataType:%s, Folder:%s", objDataSrc.MkID, sDataType, objDataSrc.Folder)
 
 	switch {
+	case (objDataSrc.MkID == "sse" && sDataType == ".wt") || (objDataSrc.MkID == "szse" && sDataType == ".wt"):
+		sZipFile = filepath.Join(sDestFolder, "WEIGHT.zip")
+		if false == pSelf.zipFolder(sZipFile, objDataSrc.Folder) {
+			return false
+		}
 	case (objDataSrc.MkID == "sse" && sDataType == ".d1") || (objDataSrc.MkID == "szse" && sDataType == ".d1"):
 		sZipFile = filepath.Join(sDestFolder, "DAY.zip")
 		if false == pSelf.zipFolder(sZipFile, objDataSrc.Folder) {
