@@ -210,7 +210,6 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 			fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
 		}
 	}
-
 }
 
 // [Event] List Resouces

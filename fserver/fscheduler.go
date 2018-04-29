@@ -73,26 +73,26 @@ func (pSelf *FileScheduler) Active() bool {
 			pSelf.BuildTime, _ = strconv.Atoi(objSetting.Value)
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] Build Time: ", pSelf.BuildTime)
 		case "syncfolder":
-			pSelf.SyncFolder = objSetting.Value
+			pSelf.SyncFolder = strings.Replace(objSetting.Value, "\\", "/", -1)
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] SyncFolder: ", pSelf.SyncFolder)
 		default:
 			sSetting := strings.ToLower(objSetting.Name)
 			if len(strings.Split(objSetting.Name, ".")) <= 1 {
-				log.Println("[WARN] FileScheduler.Active() : [Xml.Setting] Ignore -> ", objSetting.Name)
+				log.Println("[WARNING] FileScheduler.Active() : [Xml.Setting] Ignore -> ", objSetting.Name)
 				continue
 			}
 
+			objSetting.Value = strings.Replace(objSetting.Value, "\\", "/", -1)
 			pSelf.DataSourceConfig[sSetting] = DataSourceConfig{MkID: strings.ToLower(strings.Split(objSetting.Name, ".")[0]), Folder: objSetting.Value}
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] ", sSetting, pSelf.DataSourceConfig[sSetting].MkID, pSelf.DataSourceConfig[sSetting].Folder)
 		}
 	}
 
-	/////////////////////////// Compress Resources
-	return pSelf.buildSyncResource()
+	return pSelf.compressSyncResource()
 }
 
 ///////////////////////////////////// [InnerMethod]
-func (pSelf *FileScheduler) buildSyncResource() bool {
+func (pSelf *FileScheduler) compressSyncResource() bool {
 	objNowTime := time.Now()
 	objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
 
@@ -100,24 +100,25 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
 		if objNowTime.After(objBuildTime) == true {
 			var objNewResList ResourceList
-			var objZipCompress Compress = Compress{TargetFolder: pSelf.SyncFolder}
-			log.Printf("[INF] FileScheduler.buildSyncResource() : (BuildTime=%s) Building Sync Resources ......", objBuildTime.Format("2006-01-02 15:04:05"))
+			var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
+			log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", objBuildTime.Format("2006-01-02 15:04:05"))
 
 			/////////////////////// iterate data source configuration
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
-				if true == objZipCompress.Zip(sResName, &objDataSrcCfg) {
+				sTarFile, sMD5, bIsOk := objCompressor.Compress(sResName, &objDataSrcCfg)
+				if true == bIsOk {
 					/////////////// record resource path && MD5 which has been compressed
-					objNewResList.Download = append(objNewResList.Download, ResDownload{URI: objDataSrcCfg.Folder, MD5: strings.ToLower(objDataSrcCfg.MD5), UPDATE: time.Now().Format("2006-01-02 15:04:05")})
-					log.Println("[INF] FileScheduler.buildSyncResource() : [OK] ZipFile : ", objDataSrcCfg.Folder, objDataSrcCfg.MD5)
+					objNewResList.Download = append(objNewResList.Download, ResDownload{URI: sTarFile, MD5: strings.ToLower(sMD5), UPDATE: time.Now().Format("2006-01-02 15:04:05")})
+					log.Println("[INF] FileScheduler.compressSyncResource() : [OK] TarFile : ", sTarFile, strings.ToLower(sMD5))
 				} else {
-					log.Println("[WARN] FileScheduler.buildSyncResource() : [FAILURE] ZipFile : ", objDataSrcCfg.Folder)
+					log.Println("[WARN] FileScheduler.compressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
 					return false
 				}
 			}
 
 			pSelf.RefSyncSvr.SetResList(&objNewResList)
 			pSelf.LastUpdateTime = time.Now() // update time
-			log.Println("[INF] FileScheduler.buildSyncResource() : Sync Resources Builded! ......")
+			log.Println("[INF] FileScheduler.compressSyncResource() : Sync Resources Builded! ......")
 		}
 	}
 

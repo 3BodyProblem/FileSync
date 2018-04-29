@@ -1,5 +1,5 @@
 /**
- * @brief		File's Compress Tools
+ * @brief		File's Compressor Tools
  * @author		barry
  * @date		2018/4/10
  */
@@ -23,86 +23,79 @@ import (
 	"time"
 )
 
-var pathSep string = "\\"
+var sPathSep string = "\\"
 
 // Package Initialization
 func init() {
 	if os.IsPathSeparator('\\') {
-		pathSep = "\\"
+		sPathSep = "\\"
 	} else {
-		pathSep = "/"
+		sPathSep = "/"
 	}
 }
 
-///////////////////////////////////// HTTP Client Engine Stucture/Class
-type Compress struct {
+///////////////////////////////////// Resources Compressor
+type Compressor struct {
 	TargetFolder string // Root Folder
 }
 
-func tarGzDir(srcDirPath string, recPath string, tw *tar.Writer, sReplacePrefix string, funcAction func(tarw *tar.Writer, filew *os.File) []byte) bool {
-	// Open source diretory
-	dir, err := os.Open(srcDirPath)
+///////////////////////////////////// Private Method
+// Compress Folder Recursively
+func (pSelf *Compressor) compressFolder(sSrcFolder string, sRecursivePath string, oTarWriter *tar.Writer, sReplacePrefix string, funcAction func(tarw *tar.Writer, filew *os.File) []byte) bool {
+	oDirFile, err := os.Open(sSrcFolder) // Open source diretory
 	if err != nil {
 		return false
 	}
-	defer dir.Close()
+	defer oDirFile.Close()
 
-	// Get file info slice
-	fis, err := dir.Readdir(0)
+	lstFileInfo, err := oDirFile.Readdir(0) // Get file info slice
 	if err != nil {
 		return false
 	}
 
-	for _, fi := range fis {
-		// Append path
-		curPath := path.Join(srcDirPath, fi.Name())
-		// Check it is directory or file
-		if fi.IsDir() {
-			// Directory
-			// (Directory won't add unitl all subfiles are added)
-			tarGzDir(curPath, path.Join(recPath, fi.Name()), tw, sReplacePrefix, funcAction)
+	for _, oFileInfo := range lstFileInfo {
+		sCurPath := path.Join(sSrcFolder, oFileInfo.Name()) // Append path
+		if oFileInfo.IsDir() {                              // Check it is directory or file
+			pSelf.compressFolder(sCurPath, path.Join(sRecursivePath, oFileInfo.Name()), oTarWriter, sReplacePrefix, funcAction) // (Directory won't add unitl all subfiles are added)
 		}
 
-		tarGzFile(curPath, path.Join(recPath, fi.Name()), tw, fi, sReplacePrefix, funcAction)
+		tarGzResources(sCurPath, path.Join(sRecursivePath, oFileInfo.Name()), oTarWriter, oFileInfo, sReplacePrefix, funcAction)
 	}
 
 	return true
 }
 
-func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, sReplacePrefix string, funcAction func(tarw *tar.Writer, filew *os.File) []byte) bool {
-	if fi.IsDir() {
-		// Create tar header
-		hdr := new(tar.Header)
+// Compress a File
+func tarGzResources(sSrcFile string, sRecursivePath string, oTarWriter *tar.Writer, oFileInfo os.FileInfo, sReplacePrefix string, funcAction func(tarw *tar.Writer, filew *os.File) []byte) bool {
+	if oFileInfo.IsDir() {
+		hdr := new(tar.Header) // Create tar header
 		// if last character of header name is '/' it also can be directory
 		// but if you don't set Typeflag, error will occur when you untargz
-		hdr.Name = recPath + "/"
+		hdr.Name = sRecursivePath + "/"
 
 		if "MIN5" == sReplacePrefix {
 			hdr.Name = strings.Replace(hdr.Name, "MIN/", sReplacePrefix+"/", -1)
 		}
 
-		hdr.Typeflag = tar.TypeDir
 		hdr.Size = 0
+		hdr.Typeflag = tar.TypeDir
 		//hdr.Mode = 0755 | c_ISDIR
-		hdr.Mode = int64(fi.Mode())
-		hdr.ModTime = fi.ModTime()
+		hdr.Mode = int64(oFileInfo.Mode())
+		hdr.ModTime = oFileInfo.ModTime()
 
-		// Write hander
-		err := tw.WriteHeader(hdr)
+		err := oTarWriter.WriteHeader(hdr) // Write hander
 		if err != nil {
 			return false
 		}
 	} else {
-		// File reader
-		fr, err := os.Open(srcFile)
+		fr, err := os.Open(sSrcFile) // File reader
 		if err != nil {
 			return false
 		}
 		defer fr.Close()
 
-		// Create tar header
-		hdr := new(tar.Header)
-		hdr.Name = recPath
+		hdr := new(tar.Header) // Create tar header
+		hdr.Name = sRecursivePath
 
 		if "MIN5" == sReplacePrefix {
 			hdr.Name = strings.Replace(hdr.Name, "MIN/", sReplacePrefix+"/", -1)
@@ -110,28 +103,26 @@ func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, s
 
 		var bData []byte
 		if nil != funcAction {
-			bData = funcAction(tw, fr)
+			bData = funcAction(oTarWriter, fr)
 			hdr.Size = int64(len(bData))
 		} else {
-			hdr.Size = fi.Size()
+			hdr.Size = oFileInfo.Size()
 		}
-		hdr.Mode = int64(fi.Mode())
-		hdr.ModTime = fi.ModTime()
+		hdr.Mode = int64(oFileInfo.Mode())
+		hdr.ModTime = oFileInfo.ModTime()
 
-		// Write hander
-		err = tw.WriteHeader(hdr)
+		err = oTarWriter.WriteHeader(hdr) // Write hander
 		if err != nil {
 			return false
 		}
 
 		if nil == funcAction {
-			// Write file data
-			_, err = io.Copy(tw, fr)
+			_, err = io.Copy(oTarWriter, fr) // Write file data
 			if err != nil {
 				return false
 			}
 		} else {
-			tw.Write(bData)
+			oTarWriter.Write(bData) // Write file data
 		}
 	}
 
@@ -139,72 +130,66 @@ func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, s
 }
 
 ///////////////////////////////////// [OutterMethod]
-// [method] Zip
-func (pSelf *Compress) Zip(sResName string, objDataSrc *DataSourceConfig) bool {
-	var sZipFile string = ""
-	var sDataType string = strings.ToLower(sResName[strings.Index(sResName, "."):])              // data type (d1/m1/m5)
-	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.zip)
-	log.Printf("[INF] Compress.Zip() : [Compressing] ExchangeCode:%s, DataType:%s, Folder:%s", objDataSrc.MkID, sDataType, objDataSrc.Folder)
+// [method] Compress
+func (pSelf *Compressor) Compress(sResName string, objDataSrc *DataSourceConfig) (string, string, bool) {
+	var byteMD5 []byte
+	var sOutputFile string = ""
+	var sDataType string = strings.ToLower(sResName[strings.Index(sResName, "."):])              // data type (d1/m1/m5/wt)
+	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.tar.gz)
+	log.Printf("[INF] Compressor.Compress() : [Compressing] ExchangeCode:%s, DataType:%s, Folder:%s", objDataSrc.MkID, sDataType, objDataSrc.Folder)
 
 	switch {
 	case (objDataSrc.MkID == "sse" && sDataType == ".wt") || (objDataSrc.MkID == "szse" && sDataType == ".wt"):
-		sZipFile = filepath.Join(sDestFolder, "WEIGHT.zip")
-		if false == pSelf.zipFolder(sZipFile, objDataSrc.Folder) {
-			return false
+		sOutputFile = filepath.Join(sDestFolder, "WEIGHT.zip")
+		if false == pSelf.zipFolder(sOutputFile, objDataSrc.Folder) {
+			return "", "", false
 		}
 	case (objDataSrc.MkID == "sse" && sDataType == ".d1") || (objDataSrc.MkID == "szse" && sDataType == ".d1"):
-		sZipFile = filepath.Join(sDestFolder, "DAY.zip")
-		if false == pSelf.zipFolder(sZipFile, objDataSrc.Folder) {
-			return false
+		sOutputFile = filepath.Join(sDestFolder, "DAY.zip")
+		if false == pSelf.zipFolder(sOutputFile, objDataSrc.Folder) {
+			return "", "", false
 		}
 	case (objDataSrc.MkID == "sse" && sDataType == ".m1") || (objDataSrc.MkID == "szse" && sDataType == ".m1"):
-		sZipFile = filepath.Join(sDestFolder, "MIN.zip")
-		if false == pSelf.zipM1Folder(sZipFile, objDataSrc.Folder) {
-			return false
+		sOutputFile = filepath.Join(sDestFolder, "MIN.zip")
+		if false == pSelf.zipM1Folder(sOutputFile, objDataSrc.Folder) {
+			return "", "", false
 		}
 	case (objDataSrc.MkID == "sse" && sDataType == ".m5") || (objDataSrc.MkID == "szse" && sDataType == ".m5"):
-		sZipFile = filepath.Join(sDestFolder, "MIN5.zip")
-		if false == pSelf.zipM5Folder(sZipFile, objDataSrc.Folder) {
-			return false
+		sOutputFile = filepath.Join(sDestFolder, "MIN5.zip")
+		if false == pSelf.zipM5Folder(sOutputFile, objDataSrc.Folder) {
+			return "", "", false
 		}
 	default:
-		log.Printf("[ERR] Compress.Zip() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
-		return false
+		log.Printf("[ERR] Compressor.Compress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
+		return "", "", false
 	}
 
-	objDataSrc.Folder = sZipFile
-	// get absolute path of URI in local machine
-	objFile, err := os.Open(sZipFile)
+	objFile, err := os.Open(sOutputFile)
 	if err != nil {
-		log.Println("[WARN] Compress.Zip() : local file is not exist :", sZipFile)
-		return false
+		log.Println("[WARN] Compressor.Compress() : local file is not exist :", sOutputFile)
+		return "", "", false
 	}
-
-	// parepare 2 generate md5
 	defer objFile.Close()
+	/////////////////////// generate md5 string
 	objMD5Hash := md5.New()
 	if _, err := io.Copy(objMD5Hash, objFile); err != nil {
-		log.Printf("[WARN] Compress.Zip() : failed 2 generate MD5 : %s : %s", sZipFile, err.Error())
-		return false
+		log.Printf("[WARN] Compressor.Compress() : failed 2 generate MD5 : %s : %s", sOutputFile, err.Error())
+		return "", "", false
 	}
 
-	// generate MD5 string
-	var byteMD5 []byte
-	objDataSrc.MD5 = fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5))
-
-	return true
+	return sOutputFile, fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5)), true
 }
 
 ///////////////////////////////////// [InnerMethod]
 // [method] Zip M5
-func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
+func (pSelf *Compressor) zipM5Folder(sDestFile, sSrcFolder string) bool {
 	sMkFolder := path.Dir(sDestFile)
 	if "windows" == runtime.GOOS {
-		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, pathSep)]
+		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, sPathSep)]
 	}
 	err := os.MkdirAll(sMkFolder, 0755)
 	if err != nil {
-		log.Println("[ERR] Compress.zipM5Folder() : cannot build target folder 4 zip file :", path.Dir(sDestFile))
+		log.Println("[ERR] Compressor.zipM5Folder() : cannot build target folder 4 zip file :", path.Dir(sDestFile))
 		return false
 	}
 
@@ -215,9 +200,9 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 	defer objZlibWriter.Close()
 	defer objZipWriter.Close()
 
-	log.Printf("[INF] Compress.zipM5Folder() : zipping (%s) --> (%s)", sSrcFolder, sDestFile)
+	log.Printf("[INF] Compressor.zipM5Folder() : zipping (%s) --> (%s)", sSrcFolder, sDestFile)
 	if err != nil {
-		log.Println("[ERR] Compress.zipM5Folder() : failed 2 create zip file :", sDestFile, err.Error())
+		log.Println("[ERR] Compressor.zipM5Folder() : failed 2 create zip file :", sDestFile, err.Error())
 		return false
 	}
 
@@ -307,17 +292,17 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 	}
 
 	if "windows" != runtime.GOOS {
-		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "MIN5", m5filter) {
+		if false == pSelf.compressFolder(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "MIN5", m5filter) {
 			return false
 		}
 	} else {
-		lstLastFolder := strings.Split(sSrcFolder, pathSep)
+		lstLastFolder := strings.Split(sSrcFolder, sPathSep)
 		sRecFolder := lstLastFolder[len(lstLastFolder)-1]
 		if "" == sRecFolder {
 			sRecFolder = lstLastFolder[len(lstLastFolder)-2]
 		}
 
-		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, "MIN5", m5filter) {
+		if false == pSelf.compressFolder(sSrcFolder, sRecFolder, objZipWriter, "MIN5", m5filter) {
 			return false
 		}
 	}
@@ -326,14 +311,14 @@ func (pSelf *Compress) zipM5Folder(sDestFile, sSrcFolder string) bool {
 }
 
 // [method] Zip M1
-func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
+func (pSelf *Compressor) zipM1Folder(sDestFile, sSrcFolder string) bool {
 	sMkFolder := path.Dir(sDestFile)
 	if "windows" == runtime.GOOS {
-		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, pathSep)]
+		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, sPathSep)]
 	}
 	err := os.MkdirAll(sMkFolder, 0755)
 	if err != nil {
-		log.Println("[ERR] Compress.zipM1Folder() : cannot build target folder 4 zip file :", path.Dir(sDestFile))
+		log.Println("[ERR] Compressor.zipM1Folder() : cannot build target folder 4 zip file :", path.Dir(sDestFile))
 		return false
 	}
 
@@ -344,9 +329,9 @@ func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
 	defer objZlibWriter.Close()
 	defer objZipWriter.Close()
 
-	log.Printf("[INF] Compress.zipM1Folder() : zipping (%s) --> (%s)", sSrcFolder, sDestFile)
+	log.Printf("[INF] Compressor.zipM1Folder() : zipping (%s) --> (%s)", sSrcFolder, sDestFile)
 	if err != nil {
-		log.Println("[ERR] Compress.zipM1Folder() : failed 2 create zip file :", sDestFile, err.Error())
+		log.Println("[ERR] Compressor.zipM1Folder() : failed 2 create zip file :", sDestFile, err.Error())
 		return false
 	}
 
@@ -380,17 +365,17 @@ func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
 	}
 
 	if "windows" != runtime.GOOS {
-		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "", m1filter) {
+		if false == pSelf.compressFolder(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "", m1filter) {
 			return false
 		}
 	} else {
-		lstLastFolder := strings.Split(sSrcFolder, pathSep)
+		lstLastFolder := strings.Split(sSrcFolder, sPathSep)
 		sRecFolder := lstLastFolder[len(lstLastFolder)-1]
 		if "" == sRecFolder {
 			sRecFolder = lstLastFolder[len(lstLastFolder)-2]
 		}
 
-		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, "", m1filter) {
+		if false == pSelf.compressFolder(sSrcFolder, sRecFolder, objZipWriter, "", m1filter) {
 			return false
 		}
 	}
@@ -399,51 +384,51 @@ func (pSelf *Compress) zipM1Folder(sDestFile, sSrcFolder string) bool {
 }
 
 // [method] Zip Folder
-func (pSelf *Compress) zipFolder(sDestFile, sSrcFolder string) bool {
+func (pSelf *Compressor) zipFolder(sDestFile, sSrcFolder string) bool {
 	sMkFolder := path.Dir(sDestFile)
 	if "windows" == runtime.GOOS {
-		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, pathSep)]
+		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, sPathSep)]
 	}
 	err := os.MkdirAll(sMkFolder, 0755)
 	if err != nil {
-		log.Println("[ERR] Compress.zipFolder() : cannot build target folder 4 zip file :", path.Dir(sDestFile))
+		log.Println("[ERR] Compressor.zipFolder() : cannot build target folder 4 zip file :", path.Dir(sDestFile))
 		return false
 	}
 
 	objZipFile, err := os.Create(sDestFile)
 	if nil != err {
-		log.Println("[ERR] Compress.zipFolder() : cannot create zip file, ", sDestFile)
+		log.Println("[ERR] Compressor.zipFolder() : cannot create zip file, ", sDestFile)
 	}
 	objZlibWriter, err := gzip.NewWriterLevel(objZipFile, gzip.BestCompression)
 	if nil != err {
-		log.Println("[ERR] Compress.zipFolder() : cannot create gzip file, ")
+		log.Println("[ERR] Compressor.zipFolder() : cannot create gzip file, ")
 	}
 	objZipWriter := tar.NewWriter(objZlibWriter)
 	if nil != err {
-		log.Println("[ERR] Compress.zipFolder() : cannot create tar file, ")
+		log.Println("[ERR] Compressor.zipFolder() : cannot create tar file, ")
 	}
 	defer objZipFile.Close()
 	defer objZlibWriter.Close()
 	defer objZipWriter.Close()
 
-	log.Printf("[INF] Compress.zipFolder() : zipping (%s) --> (%s)", sSrcFolder, sDestFile)
+	log.Printf("[INF] Compressor.zipFolder() : zipping (%s) --> (%s)", sSrcFolder, sDestFile)
 	if err != nil {
-		log.Println("[ERR] Compress.zipFolder() : failed 2 create zip file :", sDestFile, err.Error())
+		log.Println("[ERR] Compressor.zipFolder() : failed 2 create zip file :", sDestFile, err.Error())
 		return false
 	}
 
 	if "windows" != runtime.GOOS {
-		if false == tarGzDir(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "", nil) {
+		if false == pSelf.compressFolder(sSrcFolder, path.Base(sSrcFolder), objZipWriter, "", nil) {
 			return false
 		}
 	} else {
-		lstLastFolder := strings.Split(sSrcFolder, pathSep)
+		lstLastFolder := strings.Split(sSrcFolder, sPathSep)
 		sRecFolder := lstLastFolder[len(lstLastFolder)-1]
 		if "" == sRecFolder {
 			sRecFolder = lstLastFolder[len(lstLastFolder)-2]
 		}
 
-		if false == tarGzDir(sSrcFolder, sRecFolder, objZipWriter, "", nil) {
+		if false == pSelf.compressFolder(sSrcFolder, sRecFolder, objZipWriter, "", nil) {
 			return false
 		}
 	}
