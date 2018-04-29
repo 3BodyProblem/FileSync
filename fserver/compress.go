@@ -131,7 +131,6 @@ func tarGzFile(srcFile string, recPath string, tw *tar.Writer, fi os.FileInfo, s
 				return false
 			}
 		} else {
-			//funcAction(tw, fr)
 			tw.Write(bData)
 		}
 	}

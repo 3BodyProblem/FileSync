@@ -50,7 +50,7 @@ func (pSelf *FileScheduler) Active() bool {
 		} `xml:"setting"`
 	}
 
-	// Analyze configuration(.xml) 4 Engine
+	///////////////////////////// Analyze configuration(.xml) 4 Engine
 	sXmlContent, err := ioutil.ReadFile(pSelf.XmlCfgPath)
 	if err != nil {
 		log.Println("[WARN] FileScheduler.Active() : cannot locate configuration file, path: ", pSelf.XmlCfgPath)
@@ -63,7 +63,7 @@ func (pSelf *FileScheduler) Active() bool {
 		return false
 	}
 
-	// Extract Settings
+	/////////////////////////// Extract Settings
 	log.Println("[INF] FileScheduler.Active() : [Xml.Setting] configuration file version: ", objCfg.Version)
 	pSelf.LastUpdateTime = time.Now().AddDate(-1, 0, -1)
 	pSelf.DataSourceConfig = make(map[string]DataSourceConfig)
@@ -87,6 +87,7 @@ func (pSelf *FileScheduler) Active() bool {
 		}
 	}
 
+	/////////////////////////// Compress Resources
 	return pSelf.buildSyncResource()
 }
 
@@ -95,17 +96,19 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 	objNowTime := time.Now()
 	objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
 
-	// need 2 initialize resouces
+	/////////////////////////////// Judge Whether 2 Compress A New Resoures(.tar.gz) Or Not
 	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
 		if objNowTime.After(objBuildTime) == true {
 			var objNewResList ResourceList
 			var objZipCompress Compress = Compress{TargetFolder: pSelf.SyncFolder}
 			log.Printf("[INF] FileScheduler.buildSyncResource() : (BuildTime=%s) Building Sync Resources ......", objBuildTime.Format("2006-01-02 15:04:05"))
 
+			/////////////////////// iterate data source configuration
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
 				if true == objZipCompress.Zip(sResName, &objDataSrcCfg) {
+					/////////////// record resource path && MD5 which has been compressed
 					objNewResList.Download = append(objNewResList.Download, ResDownload{URI: objDataSrcCfg.Folder, MD5: strings.ToLower(objDataSrcCfg.MD5), UPDATE: time.Now().Format("2006-01-02 15:04:05")})
-					log.Println("[INF] FileScheduler.buildSyncResource() : [OK] ZipFile : ", objDataSrcCfg.Folder)
+					log.Println("[INF] FileScheduler.buildSyncResource() : [OK] ZipFile : ", objDataSrcCfg.Folder, objDataSrcCfg.MD5)
 				} else {
 					log.Println("[WARN] FileScheduler.buildSyncResource() : [FAILURE] ZipFile : ", objDataSrcCfg.Folder)
 					return false
@@ -114,7 +117,6 @@ func (pSelf *FileScheduler) buildSyncResource() bool {
 
 			pSelf.RefSyncSvr.SetResList(&objNewResList)
 			pSelf.LastUpdateTime = time.Now() // update time
-
 			log.Println("[INF] FileScheduler.buildSyncResource() : Sync Resources Builded! ......")
 		}
 	}

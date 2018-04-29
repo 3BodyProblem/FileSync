@@ -5,7 +5,9 @@
 	<setting name="SSE.m1" value="D:\HQHISDATA\SSE\MIN\" desc="folder of shanghai 1 minute lines (raw data)"/>
 	<setting name="SSE.m5" value="D:\HQHISDATA\SSE\MIN\" desc="folder of shanghai 1 minute lines (raw data)"/>
 	<setting name="SSE.d1" value="D:\HQHISDATA\SSE\DAY" desc="folder of shanghai day lines (raw data)"/>
+	<setting name="SSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shanghai WEIGHT lines (raw data)"/>
 	<setting name="SZSE.m1" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 1 minute lines (raw data)"/>
 	<setting name="SZSE.m5" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 1 minute lines (raw data)"/>
 	<setting name="SZSE.d1" value="D:\HQHISDATA\SZSE\DAY\" desc="folder of shenzheng day lines (raw data)"/>
+	<setting name="SZSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shenzheng WEIGHT lines (raw data)"/>
 </cfg>
