@@ -228,7 +228,7 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 			}
 
 			nIndex += nOffset
-			pTarWriter := pILoader.GrapWriter(sDestFile, nDate)
+			pTarWriter := pILoader.GrapWriter(pILoader.GenFilePath(sDestFile), nDate)
 			if nil == pTarWriter {
 				return false
 			}
@@ -299,6 +299,7 @@ func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader 
 		return lstRes, false
 	}
 	///////////////// Compressing Source Data Folder
+	sDestFile = pILoader.GenFilePath(sDestFile)
 	if "windows" != runtime.GOOS {
 		if false == pSelf.compressFolder(sDestFile, sSrcFolder, path.Base(sSrcFolder), pILoader) {
 			return lstRes, false
@@ -366,17 +367,21 @@ func (pSelf *Minutes5RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 
 		// cal. 5 minutes k-lines
 		nCurTime, _ := strconv.Atoi(lstRecords[1])
-		nCurTime /= (1000 * 100)
+		nCurTime /= 1000
 		objMin5.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
 		objMin5.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
 		objMin5.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
 
-		if nCurTime > objMin5.Time { // begin
-			if 0 != i {
-				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)
-			}
+		if objMin5.Time == 0 {
+			objMin5.Time = nCurTime + 1
+		}
 
-			objMin5.Time = (5 - nCurTime%5) + nCurTime
+		if objMin5.Time != nCurTime { // begin
+			//if 0 != i {
+			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)
+			//}
+
+			objMin5.Time = nCurTime + 1
 			objMin5.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
 			objMin5.High, _ = strconv.ParseFloat(lstRecords[3], 64)
 			objMin5.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
