@@ -44,6 +44,7 @@ type FileSyncServer struct {
 	Password        string       // Server Login Password
 	SyncFolder      string       // Sync File Folder
 	objResourceList ResourceList // Resources Table
+	sResponseList   string       // Resources(Res.) Table String
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -63,6 +64,7 @@ func (pSelf *FileSyncServer) RunServer() {
 }
 
 func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
+	pSelf.sResponseList = ""
 	pSelf.objResourceList = *refResList
 }
 
@@ -218,10 +220,17 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
-	if sResponse, err := xml.Marshal(&pSelf.objResourceList); err != nil {
-		fmt.Fprintf(resp, "%s")
+	if pSelf.sResponseList == "" {
+		// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
+		if sResponse, err := xml.Marshal(&pSelf.objResourceList); err != nil {
+			fmt.Fprintf(resp, "%s")
+		} else {
+			log.Println("[INF] [Building Rescoures List] ...... ")
+			pSelf.sResponseList = sResponse
+			fmt.Fprintf(resp, "%s%s", xml.Header, string(pSelf.sResponseList))
+		}
 	} else {
-		fmt.Fprintf(resp, "%s%s", xml.Header, string(sResponse))
+		fmt.Fprintf(resp, "%s%s", xml.Header, string(pSelf.sResponseList))
 	}
+
 }

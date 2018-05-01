@@ -47,7 +47,7 @@ func (pSelf *FComparison) Compare() bool {
 	sLocalFile := filepath.Join(sLocalFolder, pSelf.URI)
 	objFile, err := os.Open(sLocalFile)
 	if err != nil {
-		log.Println("[INF] FComparison.Compare() : local resource is not exist :", sLocalFile, err.Error())
+		log.Println("[INF] FComparison.Compare() : local resource is not exist :", sLocalFile)
 		return false
 	}
 
@@ -55,7 +55,7 @@ func (pSelf *FComparison) Compare() bool {
 	defer objFile.Close()
 	objMD5Hash := md5.New()
 	if _, err := io.Copy(objMD5Hash, objFile); err != nil {
-		log.Printf("[WARN] FComparison.Compare() : failed 2 generate MD5 : %s : %s", sLocalFile, err.Error())
+		log.Printf("[WARN] FComparison.Compare() : failed 2 generate MD5 : %s : %s", sLocalFile)
 		return false
 	}
 

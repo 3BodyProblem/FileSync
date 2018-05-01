@@ -18,6 +18,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -99,27 +100,32 @@ func (pSelf *BaseRecordIO) Initialize() bool {
 func (pSelf *BaseRecordIO) Release() []ResDownload {
 	var byteMD5 []byte
 	var lstRes []ResDownload
+	var lstSortKeys []string
 	log.Println("[INF] BaseRecordIO.Release() : flushing files 2 disk, count =", len(pSelf.mapFileHandle))
 
 	for sPath, objHandles := range pSelf.mapFileHandle {
 		objHandles.CloseFile()
+		lstSortKeys = append(lstSortKeys, sPath)
+	}
 
-		objMd5File, err := os.Open(sPath)
+	sort.Strings(lstSortKeys)
+	for _, sVal := range lstSortKeys {
+		objMd5File, err := os.Open(sVal)
 		if err != nil {
-			log.Println("[WARN] BaseRecordIO.Release() : local file is not exist :", sPath)
+			log.Println("[WARN] BaseRecordIO.Release() : local file is not exist :", sVal)
 			return lstRes
 		}
 		defer objMd5File.Close()
 		/////////////////////// Generate MD5 String
 		objMD5Hash := md5.New()
 		if _, err := io.Copy(objMD5Hash, objMd5File); err != nil {
-			log.Printf("[WARN] BaseRecordIO.Release() : failed 2 generate MD5 : %s : %s", sPath, err.Error())
+			log.Printf("[WARN] BaseRecordIO.Release() : failed 2 generate MD5 : %s : %s", sVal, err.Error())
 			return lstRes
 		}
 
 		sMD5 := strings.ToLower(fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5)))
-		log.Printf("[INF] BaseRecordIO.Release() : close file = %s, md5 = %s", sPath, sMD5)
-		lstRes = append(lstRes, ResDownload{URI: sPath, MD5: sMD5, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
+		log.Printf("[INF] BaseRecordIO.Release() : close file = %s, md5 = %s", sVal, sMD5)
+		lstRes = append(lstRes, ResDownload{URI: sVal, MD5: sMD5, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
 	}
 
 	return lstRes
@@ -130,7 +136,17 @@ func (pSelf *BaseRecordIO) GenFilePath(sFileName string) string {
 }
 
 func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
-	var sFile string = fmt.Sprintf("%s%d", sFilePath, nDate)
+	var nYear int = time.Now().Year()
+	var nMonth int = int(time.Now().Month())
+	var nDay int = int(time.Now().Day())
+	var nToday = nYear*10000 + nMonth*100 + nDay
+	var sFile string = ""
+
+	if nToday/100 == nDate/100 {
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
+	} else {
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/100*100)
+	}
 
 	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
 		return objHandles.TarWriter
@@ -198,6 +214,7 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 
 		for {
 			hdr := new(tar.Header) // Create tar header
+			//hdr, err := tar.FileInfoHeader(oFileInfo, "")
 			hdr.Name = pILoader.GenFilePath(sRecursivePath)
 			bData, nDate, nOffset := pILoader.LoadFromFile(bytesData[nIndex:])
 			if len(bData) <= 0 {
