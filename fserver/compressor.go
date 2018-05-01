@@ -231,6 +231,8 @@ func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig
 	var lstRes []ResDownload
 	var sDataType string = strings.ToLower(sResName[strings.Index(sResName, "."):])              // data type (d1/m1/m5/wt)
 	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.tar.gz)
+
+	sDestFolder = strings.Replace(sDestFolder, "\\", "/", -1)
 	log.Printf("[INF] Compressor.XCompress() : [Compressing] ExchangeCode:%s, DataType:%s, Folder:%s", objDataSrc.MkID, sDataType, objDataSrc.Folder)
 
 	switch {
@@ -261,6 +263,7 @@ func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader 
 	if "windows" == runtime.GOOS {
 		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, pathSep)]
 	}
+	sDestFile = strings.Replace(sDestFile, "\\", "/", -1)
 	err := os.MkdirAll(sMkFolder, 0755)
 	if err != nil {
 		log.Println("[ERR] Compressor.translateFolder() : cannot build target folder 4 zip file :", sMkFolder)

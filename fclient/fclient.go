@@ -59,14 +59,13 @@ type ResourceList struct {
 
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
 type FileSyncClient struct {
-	ServerHost    string              // Server IP + Port
-	Account       string              // Server Login Username
-	Password      string              // Server Login Password
-	TTL           int                 // Time To Live
-	objChannel    chan DownloadStatus // Channel Of Download Task
-	ProgressFile  string              // Progress File Path
-	TaskCount     int                 // Task Count
-	CompleteCount int                 // Task Complete Count
+	ServerHost    string // Server IP + Port
+	Account       string // Server Login Username
+	Password      string // Server Login Password
+	TTL           int    // Time To Live
+	ProgressFile  string // Progress File Path
+	TaskCount     int    // Task Count
+	CompleteCount int    // Task Complete Count
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -74,8 +73,7 @@ type FileSyncClient struct {
 func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	log.Println("[INF] FileSyncClient.DoTasks() : Executing Tasks ...... ")
 	// Variable Definition
-	var objResourceList ResourceList       // uri list object
-	var objMapTask = make(map[string]bool) // map object [URI]true:sucess?false:failure
+	var objResourceList ResourceList // uri list object
 
 	// login
 	if false == pSelf.login2Server() {
@@ -90,69 +88,24 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	}
 
 	// downloading resources
-	pSelf.objChannel = make(chan DownloadStatus)
-	defer close(pSelf.objChannel) // defer this operation 2 release the channel object.
-	for _, objRes := range objResourceList.Download {
-		objMapTask[objRes.URI] = false
-		pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder)
-	}
-
-	///////////////////////////// Check Tasks Status //////////////////////////////
 	pSelf.CompleteCount = 0
-	pSelf.TaskCount = len(objMapTask)
+	pSelf.TaskCount = len(objResourceList.Download)
 	log.Println("[INF] FileSyncClient.DoTasks() : Task Number = ", pSelf.TaskCount)
-	for i := 0; i < pSelf.TTL; i++ {
-		select {
-		case objStatus := <-pSelf.objChannel:
-			if _, ok := objMapTask[objStatus.URI]; ok {
-				if objStatus.Status == ST_Completed || objStatus.Status == ST_Ignore {
-					objMapTask[objStatus.URI] = true // mark up: task completed
-					if objStatus.Status == ST_Completed {
-						log.Println("[INF] FileSyncClient.DoTasks() : [Complete] -->", objStatus.URI)
-						pSelf.dumpProgress(1)
-					} else if objStatus.Status == ST_Ignore {
-						log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", objStatus.URI)
-						pSelf.dumpProgress(1)
-					} else if objStatus.Status == ST_Error {
-						log.Println("[ERR] FileSyncClient.DoTasks() : [Exception] -->", objStatus.URI)
-						os.Remove(objStatus.LocalPath)
-					}
-
-					count := 0
-					for _, v := range objMapTask {
-						if v == true {
-							count++
-						}
-					}
-					if count == len(objMapTask) {
-						i = pSelf.TTL + 1
-					}
-				} else if objStatus.Status == ST_Error {
-					objMapTask[objStatus.URI] = false // mark up: task failed
-					log.Println("[WARN] FileSyncClient.DoTasks() : an error occur in task -->", objStatus.URI)
-				}
-			} else {
-				log.Println("[WARN] FileSyncClient.DoTasks() : invalid URI -->", objStatus.URI)
-			}
-		default:
-			time.Sleep(1 * time.Second)
+	for _, objRes := range objResourceList.Download {
+		if false == pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder) {
+			log.Println("[ERROR] FileSyncClient.DoTasks() : Mission Terminated ...... ")
+			return
+		} else {
+			pSelf.dumpProgress(1)
 		}
 	}
 
 	pSelf.dumpProgress(0)
-
 	log.Println("[INF] FileSyncClient.DoTasks() : Mission Completed ...... ")
 }
 
 ///////////////////////////////////// [InnerMethod]
-// [method] download resource
-type DownloadStatus struct {
-	URI       string         // download url
-	Status    TaskStatusType // task status
-	LocalPath string         // File Path In Disk
-}
-
-func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder string) {
+func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder string) bool {
 	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
@@ -162,10 +115,19 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		if ST_Completed == nTaskStatus {
 			if false == objUnzip.Unzip(sLocalPath, sUri) {
 				nTaskStatus = ST_Error
+			} else {
+				log.Println("[INF] FileSyncClient.fetchResource() : [Complete] -->", sUri)
 			}
 		}
 
-		pSelf.objChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath} // Mission Finished!
+		if ST_Ignore == nTaskStatus {
+			log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", sUri)
+		}
+
+		if ST_Error == nTaskStatus {
+			log.Println("[ERR] FileSyncClient.fetchResource() : [Exception] --> Remove Cache File =", sLocalPath)
+			os.Remove(sLocalPath)
+		}
 	}()
 
 	if true == objFCompare.Compare() {
@@ -181,7 +143,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		httpRes, err := httpClient.Do(httpReq)
 		if err != nil {
 			log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, err.Error())
-			return
+			return false
 		}
 
 		// get absolute file path
@@ -189,7 +151,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
 		if err != nil {
 			log.Println("[WARN] FileSyncClient.fetchResource() : failed 2 fetch absolute path of program")
-			return
+			return false
 		}
 
 		// save resource file 3 disk
@@ -202,14 +164,14 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		err = os.MkdirAll(sMkFolder, 0711)
 		if err != nil {
 			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
-			return
+			return false
 		}
 
 		objDataBuf := &bytes.Buffer{}
 		_, err2 := objDataBuf.ReadFrom(httpRes.Body)
 		if err2 != nil {
 			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, err.Error())
-			return
+			return false
 		}
 
 		objFile, _ := os.Create(sLocalFile)
@@ -217,12 +179,14 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		_, err = io.Copy(objFile, objDataBuf)
 		if err != nil {
 			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot save 2 file : ", sUri, err.Error())
-			return
+			return false
 		}
 
 		sLocalPath = sLocalFile    // local file path
 		nTaskStatus = ST_Completed // set complete flag
 	}
+
+	return true
 }
 
 // [method] login 2 server

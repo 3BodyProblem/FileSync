@@ -32,9 +32,11 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 	// open zip file
 	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
 	if "windows" == runtime.GOOS {
-		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "\\")])
+		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
 	}
 
+	sZipSrcPath = strings.Replace(sZipSrcPath, "\\", "/", -1)
+	sLocalFolder = strings.Replace(sLocalFolder, "\\", "/", -1)
 	log.Printf("[INF] Uncompress.Unzip() : [Uncompressing] zip file %s --> %s", sZipSrcPath, sLocalFolder)
 	objZipReader, err := os.Open(sZipSrcPath)
 	if err != nil {
@@ -77,13 +79,24 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			}
 
 			// Write data to file
+			sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
 			fw, err := os.Create(sTargetFile)
 			if err != nil {
 				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, err.Error())
 				return false
 			}
-
 			defer fw.Close()
+
+			if strings.LastIndex(sTargetFile, "/MIN/") > 0 {
+				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+			}
+			if strings.LastIndex(sTargetFile, "/MIN5/") > 0 {
+				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+			}
+			if strings.LastIndex(sTargetFile, "/DAY/") > 0 {
+				fw.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+			}
+
 			_, err = io.Copy(fw, objTarReader)
 			if err != nil {
 				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot write tar file, file name =", sTargetFile, err.Error())
