@@ -151,7 +151,7 @@ func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 		} else {
 			nDD = 15
 		}
-		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/100*100)
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/100*100+nDD)
 	}
 
 	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
