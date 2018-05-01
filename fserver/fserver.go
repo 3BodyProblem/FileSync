@@ -226,11 +226,11 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 			fmt.Fprintf(resp, "%s")
 		} else {
 			log.Println("[INF] [Building Rescoures List] ...... ")
-			pSelf.sResponseList = sResponse
-			fmt.Fprintf(resp, "%s%s", xml.Header, string(pSelf.sResponseList))
+			pSelf.sResponseList = string(sResponse)
+			fmt.Fprintf(resp, "%s%s", xml.Header, []byte(pSelf.sResponseList))
 		}
 	} else {
-		fmt.Fprintf(resp, "%s%s", xml.Header, string(pSelf.sResponseList))
+		fmt.Fprintf(resp, "%s%s", xml.Header, []byte(pSelf.sResponseList))
 	}
 
 }
