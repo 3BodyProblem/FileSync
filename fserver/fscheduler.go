@@ -105,11 +105,11 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 
 			/////////////////////// iterate data source configuration
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
-				sTarFile, sMD5, bIsOk := objCompressor.Compress(sResName, &objDataSrcCfg)
+				lstRes, bIsOk := objCompressor.XCompress(sResName, &objDataSrcCfg)
 				if true == bIsOk {
 					/////////////// record resource path && MD5 which has been compressed
-					objNewResList.Download = append(objNewResList.Download, ResDownload{URI: sTarFile, MD5: strings.ToLower(sMD5), UPDATE: time.Now().Format("2006-01-02 15:04:05")})
-					log.Println("[INF] FileScheduler.compressSyncResource() : [OK] TarFile : ", sTarFile, strings.ToLower(sMD5))
+					objNewResList.Download = append(objNewResList.Download, lstRes...)
+					log.Println("[INF] FileScheduler.compressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
 				} else {
 					log.Println("[WARN] FileScheduler.compressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
 					return false
