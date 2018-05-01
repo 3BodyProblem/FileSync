@@ -220,7 +220,6 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 
 			pTarWriter.Write(bData) // Write file data
 		}
-
 	}
 
 	return true

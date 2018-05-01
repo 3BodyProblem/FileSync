@@ -94,7 +94,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	defer close(pSelf.objChannel) // defer this operation 2 release the channel object.
 	for _, objRes := range objResourceList.Download {
 		objMapTask[objRes.URI] = false
-		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder)
+		pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder)
 	}
 
 	///////////////////////////// Check Tasks Status //////////////////////////////
