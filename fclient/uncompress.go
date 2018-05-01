@@ -87,14 +87,14 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			}
 			defer fw.Close()
 
-			nFileSize, _ := fw.Seek(0, os.SEEK_CUR) //SEEK_END)
-			if strings.LastIndex(sTargetFile, "/MIN/") > 0 && nFileSize > 0 {
+			nFileSize, _ := fw.Seek(0, os.SEEK_END)
+			if strings.LastIndex(sTargetFile, "/MIN/") > 0 && nFileSize == 0 {
 				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 			}
-			if strings.LastIndex(sTargetFile, "/MIN5/") > 0 && nFileSize > 0 {
+			if strings.LastIndex(sTargetFile, "/MIN5/") > 0 && nFileSize == 0 {
 				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 			}
-			if strings.LastIndex(sTargetFile, "/DAY/") > 0 && nFileSize > 0 {
+			if strings.LastIndex(sTargetFile, "/DAY/") > 0 && nFileSize == 0 {
 				fw.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 			}
 
