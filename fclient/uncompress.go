@@ -80,20 +80,21 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 
 			// Write data to file
 			sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
-			fw, err := os.Create(sTargetFile)
+			fw, err := os.OpenFile(sTargetFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, err.Error())
 				return false
 			}
 			defer fw.Close()
 
-			if strings.LastIndex(sTargetFile, "/MIN/") > 0 {
+			nFileSize, _ := fw.Seek(0, os.SEEK_END)
+			if strings.LastIndex(sTargetFile, "/MIN/") > 0 && nFileSize > 0 {
 				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 			}
-			if strings.LastIndex(sTargetFile, "/MIN5/") > 0 {
+			if strings.LastIndex(sTargetFile, "/MIN5/") > 0 && nFileSize > 0 {
 				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 			}
-			if strings.LastIndex(sTargetFile, "/DAY/") > 0 {
+			if strings.LastIndex(sTargetFile, "/DAY/") > 0 && nFileSize > 0 {
 				fw.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 			}
 
