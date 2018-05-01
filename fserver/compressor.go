@@ -142,9 +142,15 @@ func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 	var nToday = nYear*10000 + nMonth*100 + nDay
 	var sFile string = ""
 
-	if nToday/100 == nDate/100 {
+	if nToday/100 == nDate/100 { ////// Today
 		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
-	} else {
+	} else { ////////////////////////// Not Today
+		nDD := (nDate % 100) ////////// One File With 2 Week's Data Inside
+		if nDD <= 15 {
+			nDD = 0
+		} else {
+			nDD = 15
+		}
 		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/100*100)
 	}
 
@@ -360,6 +366,7 @@ func (pSelf *Minutes5RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 
 		// cal. 5 minutes k-lines
 		nCurTime, _ := strconv.Atoi(lstRecords[1])
+		nCurTime /= (1000 * 100)
 		objMin5.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
 		objMin5.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
 		objMin5.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
