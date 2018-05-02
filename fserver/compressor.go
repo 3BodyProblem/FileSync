@@ -24,15 +24,8 @@ import (
 	"time"
 )
 
-var sPathSep string = "\\"
-
 // Package Initialization
 func init() {
-	if os.IsPathSeparator('\\') {
-		sPathSep = "\\"
-	} else {
-		sPathSep = "/"
-	}
 }
 
 ///////////////////////////////////// Data Record IO Wrapper
