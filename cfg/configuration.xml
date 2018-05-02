@@ -10,4 +10,11 @@
 	<setting name="SZSE.m5" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 1 minute lines (raw data)"/>
 	<setting name="SZSE.d1" value="D:\HQHISDATA\SZSE\DAY\" desc="folder of shenzheng day lines (raw data)"/>
 	<setting name="SZSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shenzheng WEIGHT lines (raw data)"/>
+	<setting name="SSE.coderange" value="000001~000999" desc="security id range of shanghai market"/>
+	<setting name="SSE.coderange" value="600000~609999" desc="security id range of shanghai market"/>
+	<setting name="SSE.coderange" value="510000~519999" desc="security id range of shanghai market"/>
+	<setting name="SZSE.coderange" value="399000~399999" desc="security id range of shenzheng market"/>
+	<setting name="SZSE.coderange" value="000001~009999" desc="security id range of shenzheng market"/>
+	<setting name="SZSE.coderange" value="159000~159999" desc="security id range of shenzheng market"/>
+	<setting name="SZSE.coderange" value="300000~300999" desc="security id range of shenzheng market"/>
 </cfg>

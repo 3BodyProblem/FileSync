@@ -77,12 +77,18 @@ type I_Record_IO interface {
 	Initialize() bool
 	Release() []ResDownload
 	LoadFromFile(bytesData []byte) ([]byte, int, int)   // load data from file, return [] byte (return nil means end of file)
+	CodeInWhiteTable(sFileName string) bool             // judge whether the file need 2 be loaded
 	GenFilePath(sFileName string) string                // generate name  of file which in .tar
 	GrapWriter(sFilePath string, nDate int) *tar.Writer // grap a .tar writer ptr
 }
 
 type BaseRecordIO struct {
-	mapFileHandle map[string]CompressHandles
+	CodeRangeFilter I_Range_OP
+	mapFileHandle   map[string]CompressHandles
+}
+
+func (pSelf *BaseRecordIO) CodeInWhiteTable(sFileName string) bool {
+	return true
 }
 
 func (pSelf *BaseRecordIO) Initialize() bool {
@@ -190,6 +196,11 @@ func (pSelf *Compressor) compressFolder(sDestFile string, sSrcFolder string, sRe
 			pSelf.compressFolder(sDestFile, sCurPath, path.Join(sRecursivePath, oFileInfo.Name()), pILoader) // (Directory won't add unitl all subfiles are added)
 		}
 
+		// Code File Is Not In White Table
+		if pILoader.CodeInWhiteTable(sCurPath) == false {
+			continue
+		}
+
 		compressFile(sDestFile, sCurPath, path.Join(sRecursivePath, oFileInfo.Name()), oFileInfo, pILoader)
 	}
 
@@ -243,7 +254,7 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 
 ///////////////////////////////////// [OutterMethod]
 // [method] XCompress
-func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig) ([]ResDownload, bool) {
+func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig, codeRange I_Range_OP) ([]ResDownload, bool) {
 	var lstRes []ResDownload
 	var sDataType string = strings.ToLower(sResName[strings.Index(sResName, "."):])              // data type (d1/m1/m5/wt)
 	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.tar.gz)
@@ -253,16 +264,16 @@ func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig
 
 	switch {
 	case (objDataSrc.MkID == "sse" && sDataType == ".wt") || (objDataSrc.MkID == "szse" && sDataType == ".wt"):
-		var objRecordIO WeightRecordIO // policy of Weight data loader
+		objRecordIO := WeightRecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of Weight data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "WEIGHT/WEIGHT."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".d1") || (objDataSrc.MkID == "szse" && sDataType == ".d1"):
-		var objRecordIO Day1RecordIO // policy of Day data loader
+		objRecordIO := Day1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of Day data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "DAY/DAY."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m1") || (objDataSrc.MkID == "szse" && sDataType == ".m1"):
-		var objRecordIO Minutes1RecordIO // policy of M1 data loader
+		objRecordIO := Minutes1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of M1 data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN/MIN."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m5") || (objDataSrc.MkID == "szse" && sDataType == ".m5"):
-		var objRecordIO Minutes5RecordIO // policy of M5 data loader
+		objRecordIO := Minutes5RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of M5 data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN5/MIN5."), objDataSrc.Folder, &objRecordIO)
 	default:
 		log.Printf("[ERR] Compressor.XCompress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
@@ -309,6 +320,18 @@ func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader 
 ///////////////////////// 5Minutes Lines
 type Minutes5RecordIO struct {
 	BaseRecordIO
+}
+
+func (pSelf *Minutes5RecordIO) CodeInWhiteTable(sFileName string) bool {
+	if pSelf.CodeRangeFilter == nil {
+		return true
+	}
+
+	nEnd := strings.LastIndexAny(sFileName, ".")
+	nEnd = nEnd - 5
+	sCodeNum := sFileName[nEnd-6 : nEnd]
+
+	return pSelf.CodeRangeFilter.CodeInRange(sCodeNum)
 }
 
 func (pSelf *Minutes5RecordIO) GenFilePath(sFileName string) string {
@@ -414,6 +437,18 @@ type Minutes1RecordIO struct {
 	BaseRecordIO
 }
 
+func (pSelf *Minutes1RecordIO) CodeInWhiteTable(sFileName string) bool {
+	if pSelf.CodeRangeFilter == nil {
+		return true
+	}
+
+	nEnd := strings.LastIndexAny(sFileName, ".")
+	nEnd = nEnd - 5
+	sCodeNum := sFileName[nEnd-6 : nEnd]
+
+	return pSelf.CodeRangeFilter.CodeInRange(sCodeNum)
+}
+
 func (pSelf *Minutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	var nReturnDate int = -100
 	var rstr string = ""
@@ -447,6 +482,17 @@ func (pSelf *Minutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 ///////////////////////// 1 Day Lines
 type Day1RecordIO struct {
 	BaseRecordIO
+}
+
+func (pSelf *Day1RecordIO) CodeInWhiteTable(sFileName string) bool {
+	if pSelf.CodeRangeFilter == nil {
+		return true
+	}
+
+	nEnd := strings.LastIndexAny(sFileName, ".")
+	sCodeNum := sFileName[nEnd-6 : nEnd]
+
+	return pSelf.CodeRangeFilter.CodeInRange(sCodeNum)
 }
 
 func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
