@@ -196,11 +196,6 @@ func (pSelf *Compressor) compressFolder(sDestFile string, sSrcFolder string, sRe
 			pSelf.compressFolder(sDestFile, sCurPath, path.Join(sRecursivePath, oFileInfo.Name()), pILoader) // (Directory won't add unitl all subfiles are added)
 		}
 
-		// Code File Is Not In White Table
-		if pILoader.CodeInWhiteTable(sCurPath) == false {
-			continue
-		}
-
 		compressFile(sDestFile, sCurPath, path.Join(sRecursivePath, oFileInfo.Name()), oFileInfo, pILoader)
 	}
 
@@ -211,6 +206,11 @@ func (pSelf *Compressor) compressFolder(sDestFile string, sSrcFolder string, sRe
 func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFileInfo os.FileInfo, pILoader I_Record_IO) bool {
 	if oFileInfo.IsDir() {
 	} else {
+		// Code File Is Not In White Table
+		if pILoader.CodeInWhiteTable(sSrcFile) == false {
+			return true
+		}
+
 		var nIndex int = 0
 		oSrcFile, err := os.Open(sSrcFile) // File reader
 		if err != nil {
