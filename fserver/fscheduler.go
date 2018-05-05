@@ -167,19 +167,19 @@ func (pSelf *FileScheduler) Active() bool {
 	}
 
 	/////////////////////////// First Time 2 Build Resources
-	if false == pSelf.compressSyncResource() {
+	if true == pSelf.compressSyncResource() {
 		return false
-	} else {
-		if false == pSelf.RefSyncSvr.LoadResList() {
-			return false
-		}
-
-		pSelf.LastUpdateTime = time.Now() // update time
-		log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Resources List Builded! ......", pSelf.LastUpdateTime.Format("2006-01-02 15:04:05"))
-		go pSelf.ResRebuilder()
-
-		return true
 	}
+
+	if false == pSelf.RefSyncSvr.LoadResList() {
+		return false
+	}
+
+	pSelf.LastUpdateTime = time.Now() // update time
+	log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Resources List Builded! ......", pSelf.LastUpdateTime.Format("2006-01-02 15:04:05"))
+	go pSelf.ResRebuilder()
+
+	return true
 }
 
 func (pSelf *FileScheduler) ResRebuilder() {
