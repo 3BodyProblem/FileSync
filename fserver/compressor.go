@@ -138,7 +138,7 @@ func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 	var nYear int = time.Now().Year()
 	var nMonth int = int(time.Now().Month())
 	var nDay int = int(time.Now().Day())
-	var nToday = nYear*10000 + nMonth*100 + nDay
+	var nToday int = nYear*10000 + nMonth*100 + nDay
 	var sFile string = ""
 
 	if nToday/100 == nDate/100 { ////// Current Month
