@@ -91,7 +91,7 @@ func (pSelf *FileSyncServer) LoadResList() bool {
 	objResponseLoader, err := os.Open("./restable.dat")
 	defer objResponseLoader.Close()
 	if nil == err {
-		bytesData := make([]byte, 1024*1024*15)
+		bytesData := make([]byte, 1024*1024*8)
 		nLen, _ := objResponseLoader.Read(bytesData)
 		pSelf.sResponseList = string(bytesData)
 		log.Println("[INF] FileSyncServer.LoadResList() : [OK] load %d bytes from ./restable.dat : ", nLen)
