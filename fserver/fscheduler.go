@@ -168,7 +168,7 @@ func (pSelf *FileScheduler) Active() bool {
 
 	/////////////////////////// First Time 2 Build Resources
 	if true == pSelf.compressSyncResource() {
-		return false
+		return true
 	}
 
 	if false == pSelf.RefSyncSvr.LoadResList() {

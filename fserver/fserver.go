@@ -69,10 +69,10 @@ func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
 	pSelf.objResourceList = *refResList
 
 	// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
-	if sResponse, err := xml.Marshal(&pSelf.objResourceList); err == nil {
-		log.Println("[INF] [Building Resoures List] Error Occur while marshaling xml obj. ...... ")
+	if sResponse, err := xml.Marshal(&pSelf.objResourceList); err != nil {
+		log.Println("[ERR] FileSyncServer.SetResList() : Error Occur while marshaling xml obj. :", err.Error())
 	} else {
-		log.Println("[INF] [Building Resoures List] marshaling xml obj. ...... ")
+		log.Println("[INF] FileSyncServer.SetResList() : marshaling xml obj. ...... ")
 		pSelf.sResponseList = string(sResponse)
 
 		//////////////////////// save status 2 ./status.dat
