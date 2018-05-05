@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 )
 
 var (
@@ -66,6 +67,41 @@ func (pSelf *FileSyncServer) RunServer() {
 func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
 	pSelf.sResponseList = ""
 	pSelf.objResourceList = *refResList
+
+	// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
+	if sResponse, err := xml.Marshal(&pSelf.objResourceList); err == nil {
+		log.Println("[INF] [Building Resoures List] Error Occur while marshaling xml obj. ...... ")
+	} else {
+		log.Println("[INF] [Building Resoures List] marshaling xml obj. ...... ")
+		pSelf.sResponseList = string(sResponse)
+
+		//////////////////////// save status 2 ./status.dat
+		objResponseSaver, err := os.Create("./restable.dat")
+		defer objResponseSaver.Close()
+		if nil != err {
+			log.Println("[ERR] [Saving Resources List] : [FAILURE] cannot save ./restable.dat 2 disk :", err.Error())
+		} else {
+			nLen, _ := objResponseSaver.Write([]byte(xml.Header + pSelf.sResponseList))
+			log.Printf("[INF] [Saving Resources List] : [OK] Write %d bytes 2 ./restable.dat", nLen)
+		}
+	}
+}
+
+func (pSelf *FileSyncServer) LoadResList() bool {
+	objResponseLoader, err := os.Open("./restable.dat")
+	defer objResponseLoader.Close()
+	if nil == err {
+		bytesData := make([]byte, 1024*1024*15)
+		nLen, _ := objResponseLoader.Read(bytesData)
+		pSelf.sResponseList = string(bytesData)
+		log.Println("[INF] FileSyncServer.LoadResList() : [OK] load %d bytes from ./restable.dat : ", nLen)
+
+		return true
+	}
+
+	log.Println("[ERR] FileSyncServer.LoadResList() : [ERR] cannot load ./restable.dat : ", err.Error())
+
+	return false
 }
 
 ///////////////////////////////////// [InnerMethod]
@@ -220,17 +256,5 @@ func (pSelf *FileSyncServer) handleList(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	if pSelf.sResponseList == "" {
-		// Marshal Obj 2 Xml String && Write 2 HTTP Response Object
-		if sResponse, err := xml.Marshal(&pSelf.objResourceList); err != nil {
-			fmt.Fprintf(resp, "%s")
-		} else {
-			log.Println("[INF] [Building Rescoures List] ...... ")
-			pSelf.sResponseList = string(sResponse)
-			fmt.Fprintf(resp, "%s%s", xml.Header, []byte(pSelf.sResponseList))
-		}
-	} else {
-		fmt.Fprintf(resp, "%s%s", xml.Header, []byte(pSelf.sResponseList))
-	}
-
+	fmt.Fprintf(resp, "%s%s", xml.Header, []byte(pSelf.sResponseList))
 }
