@@ -293,7 +293,7 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 			log.Println("[INF] FileScheduler.compressSyncResource() : date in ./status.dat ---> ", nYY, nMM, nDD)
 			if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
 				log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Skip compression of rescoures' files! ......")
-				return true
+				return false
 			}
 		}
 	}

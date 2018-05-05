@@ -81,7 +81,7 @@ func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
 		if nil != err {
 			log.Println("[ERR] FileSyncServer.SetResList() : [FAILURE] cannot save ./restable.dat 2 disk :", err.Error())
 		} else {
-			nLen, _ := objResponseSaver.Write([]byte(xml.Header + pSelf.sResponseList))
+			nLen, _ := objResponseSaver.Write([]byte(pSelf.sResponseList))
 			log.Printf("[INF] FileSyncServer.SetResList() : [OK] Write %d bytes 2 ./restable.dat", nLen)
 		}
 	}
