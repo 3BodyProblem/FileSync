@@ -105,7 +105,6 @@ type FileScheduler struct {
 //  Active File Scheduler
 func (pSelf *FileScheduler) Active() bool {
 	log.Println("[INF] FileScheduler.Active() : configuration file path: ", pSelf.XmlCfgPath)
-
 	// Definition Of Profile's Structure
 	var objCfg struct {
 		XMLName xml.Name `xml:"cfg"`
@@ -167,7 +166,41 @@ func (pSelf *FileScheduler) Active() bool {
 		}
 	}
 
-	return pSelf.compressSyncResource()
+	/////////////////////////// First Time 2 Build Resources
+	if false == pSelf.compressSyncResource() {
+		return false
+	} else {
+		go pSelf.ResRebuilder()
+		return true
+	}
+}
+
+func (pSelf *FileScheduler) ResRebuilder() {
+	for {
+		time.Sleep(time.Second * 15)
+		objNowTime := time.Now()
+		//objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
+		objStatusLoader, err := os.Open("./status.dat")
+		defer objStatusLoader.Close()
+		/////////////////////////////// Judge Whether 2 Compress Quotation Files
+		if nil == err {
+			bytesData := make([]byte, 20)
+			objStatusLoader.Read(bytesData)
+			nYY, nMM, nDD, _, _, _, bIsOk := parseTimeStr(string(bytesData))
+			if true == bIsOk {
+				if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
+					continue
+				}
+
+				nNowTime := objNowTime.Hour()*10000 + objNowTime.Minute()*100 + objNowTime.Second()
+				if nNowTime > pSelf.BuildTime {
+					log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Building compression of rescoures' files! ......")
+					pSelf.compressSyncResource()
+				}
+			}
+		}
+
+	}
 }
 
 func (pSelf *FileScheduler) GetRangeOP(sExchangeID string) I_Range_OP {
