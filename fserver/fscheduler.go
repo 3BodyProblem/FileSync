@@ -179,7 +179,6 @@ func (pSelf *FileScheduler) ResRebuilder() {
 	for {
 		time.Sleep(time.Second * 15)
 		objNowTime := time.Now()
-		//objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
 		objStatusLoader, err := os.Open("./status.dat")
 		defer objStatusLoader.Close()
 		/////////////////////////////// Judge Whether 2 Compress Quotation Files
@@ -230,7 +229,6 @@ func parseTimeStr(sTimeString string) (int, int, int, int, int, int, bool) {
 	lstDateTime := strings.Split(sTimeString, " ")
 	lstDate := strings.Split(lstDateTime[0], "-")
 	lstTime := strings.Split(lstDateTime[1], ":")
-	log.Println("[INF] fscheduler.go.parseTimeStr() : ", lstDateTime[0], lstDateTime[1])
 
 	nYY, err := strconv.Atoi(lstDate[0])
 	if nil != err {
