@@ -9,6 +9,7 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -192,19 +193,58 @@ func (pSelf *FileScheduler) GetRangeOP(sExchangeID string) I_Range_OP {
 	return objRangeOp
 }
 
+func parseTimeStr(sTimeString string) (int, int, int, bool) {
+	lstTime := strings.Split(sTimeString, " ")
+	lstDate := strings.Split(lstTime[0], "-")
+
+	nYY, err := strconv.Atoi(lstDate[0])
+	if nil != err {
+		return 0, 0, 0, false
+	}
+
+	nMM, err := strconv.Atoi(lstDate[1])
+	if nil != err {
+		return 0, 0, 0, false
+	}
+
+	nDD, err := strconv.Atoi(lstDate[2])
+	if nil != err {
+		return 0, 0, 0, false
+	}
+
+	return nYY, nMM, nDD, true
+}
+
 ///////////////////////////////////// [InnerMethod]
 func (pSelf *FileScheduler) compressSyncResource() bool {
 	objNowTime := time.Now()
 	objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
+
+	/////////////////////////////// Judge Whether 2 Compress Quotation Files
+	objStatusLoader, err := os.Open("./status.dat")
+	defer objStatusLoader.Close()
+	if nil == err {
+		bytesData := make([]byte, 20)
+		nLen, _ := objStatusLoader.Read(bytesData)
+		log.Printf("[INF] FileScheduler.compressSyncResource() : [OK] Load %d bytes from ./status.dat ---> %s", nLen, string(bytesData))
+		nYY, nMM, nDD, bIsOk := parseTimeStr(string(bytesData))
+		if true == bIsOk {
+			log.Println("[INF] FileScheduler.compressSyncResource() : date in ./status.dat ---> ", nYY, nMM, nDD)
+			if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
+				log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Skip compression of rescoures' files! ......")
+				return true
+			}
+		}
+	}
 
 	/////////////////////////////// Judge Whether 2 Compress A New Resoures(.tar.gz) Or Not
 	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
 		if objNowTime.After(objBuildTime) == true {
 			var objNewResList ResourceList
 			var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
-			log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", objBuildTime.Format("2006-01-02 15:04:05"))
+			log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))
 
-			/////////////////////// iterate data source configuration
+			/////////////////////// iterate data source configuration && compress quotation files
 			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
 				lstRes, bIsOk := objCompressor.XCompress(sResName, &objDataSrcCfg, pSelf.GetRangeOP(sResName))
 				if true == bIsOk {
@@ -219,7 +259,18 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 
 			pSelf.RefSyncSvr.SetResList(&objNewResList)
 			pSelf.LastUpdateTime = time.Now() // update time
-			log.Println("[INF] FileScheduler.compressSyncResource() : Sync Resources Builded! ......")
+			sBuildedTime := pSelf.LastUpdateTime.Format("2006-01-02 15:04:05")
+			log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Sync Resources Builded! ......", sBuildedTime)
+
+			//////////////////////// save status 2 ./status.dat
+			objStatusSaver, err := os.Create("./status.dat")
+			defer objStatusSaver.Close()
+			if nil != err {
+				log.Println("[ERROR] FileScheduler.compressSyncResource() : [FAILURE] cannot save ./status.dat 2 disk :", err.Error())
+			} else {
+				nLen, _ := objStatusSaver.Write([]byte(sBuildedTime))
+				log.Printf("[INF] FileScheduler.compressSyncResource() : [OK] Write %d bytes 2 ./status.dat <--- %s", nLen, sBuildedTime)
+			}
 		}
 	}
 
