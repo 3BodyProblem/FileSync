@@ -193,26 +193,49 @@ func (pSelf *FileScheduler) GetRangeOP(sExchangeID string) I_Range_OP {
 	return objRangeOp
 }
 
-func parseTimeStr(sTimeString string) (int, int, int, bool) {
-	lstTime := strings.Split(sTimeString, " ")
-	lstDate := strings.Split(lstTime[0], "-")
+func parseTimeStr(sTimeString string) (int, int, int, int, int, int, bool) {
+	lstDateTime := strings.Split(sTimeString, " ")
+	lstDate := strings.Split(lstDateTime[0], "-")
+	lstTime := strings.Split(lstDateTime[1], ":")
+	log.Println("[INF] fscheduler.go.parseTimeStr() : ", lstDateTime[0], lstDateTime[1])
 
 	nYY, err := strconv.Atoi(lstDate[0])
 	if nil != err {
-		return 0, 0, 0, false
+		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Year :", lstDate[0], err.Error())
+		return 0, 0, 0, 0, 0, 0, false
 	}
 
 	nMM, err := strconv.Atoi(lstDate[1])
 	if nil != err {
-		return 0, 0, 0, false
+		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Month :", lstDate[1], err.Error())
+		return 0, 0, 0, 0, 0, 0, false
 	}
 
 	nDD, err := strconv.Atoi(lstDate[2])
 	if nil != err {
-		return 0, 0, 0, false
+		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Day :", lstDate[0], err.Error())
+		return 0, 0, 0, 0, 0, 0, false
 	}
 
-	return nYY, nMM, nDD, true
+	nHH, err := strconv.Atoi(lstTime[0])
+	if nil != err {
+		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Hour :", lstTime[0], err.Error())
+		return 0, 0, 0, 0, 0, 0, false
+	}
+
+	nmm, err := strconv.Atoi(lstTime[1])
+	if nil != err {
+		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Minute :", lstTime[1], err.Error())
+		return 0, 0, 0, 0, 0, 0, false
+	}
+
+	nSS, err := strconv.Atoi(lstTime[2][:2])
+	if nil != err {
+		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Second :", lstTime[2], err.Error())
+		return 0, 0, 0, 0, 0, 0, false
+	}
+
+	return nYY, nMM, nDD, nHH, nmm, nSS, true
 }
 
 ///////////////////////////////////// [InnerMethod]
@@ -227,7 +250,7 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 		bytesData := make([]byte, 20)
 		nLen, _ := objStatusLoader.Read(bytesData)
 		log.Printf("[INF] FileScheduler.compressSyncResource() : [OK] Load %d bytes from ./status.dat ---> %s", nLen, string(bytesData))
-		nYY, nMM, nDD, bIsOk := parseTimeStr(string(bytesData))
+		nYY, nMM, nDD, _, _, _, bIsOk := parseTimeStr(string(bytesData))
 		if true == bIsOk {
 			log.Println("[INF] FileScheduler.compressSyncResource() : date in ./status.dat ---> ", nYY, nMM, nDD)
 			if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
