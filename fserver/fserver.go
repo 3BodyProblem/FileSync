@@ -79,10 +79,10 @@ func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
 		objResponseSaver, err := os.Create("./restable.dat")
 		defer objResponseSaver.Close()
 		if nil != err {
-			log.Println("[ERR] [Saving Resources List] : [FAILURE] cannot save ./restable.dat 2 disk :", err.Error())
+			log.Println("[ERR] FileSyncServer.SetResList() : [FAILURE] cannot save ./restable.dat 2 disk :", err.Error())
 		} else {
 			nLen, _ := objResponseSaver.Write([]byte(xml.Header + pSelf.sResponseList))
-			log.Printf("[INF] [Saving Resources List] : [OK] Write %d bytes 2 ./restable.dat", nLen)
+			log.Printf("[INF] FileSyncServer.SetResList() : [OK] Write %d bytes 2 ./restable.dat", nLen)
 		}
 	}
 }
