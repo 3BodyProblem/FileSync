@@ -141,9 +141,9 @@ func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 	var nToday = nYear*10000 + nMonth*100 + nDay
 	var sFile string = ""
 
-	if nToday/100 == nDate/100 { ////// Today
+	if nToday/100 == nDate/100 { ////// Current Month
 		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
-	} else { ////////////////////////// Not Today
+	} else { ////////////////////////// Not Current Month
 		nDD := (nDate % 100) ////////// One File With 2 Week's Data Inside
 		if nDD <= 15 {
 			nDD = 0
