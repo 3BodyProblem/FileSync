@@ -67,18 +67,20 @@ type FileSyncClient struct {
 	TaskCount            int                 // Task Count
 	CompleteCount        int                 // Task Complete Count
 	objTaskChannel       chan int            // Channel Of Actived Task
-	objDownloadedChannel chan DownloadStatus // Channel Of Download Task
+	objResChannel        chan DownloadStatus // Channel Of Download Task
+	nLastSeqNo           int                 // Last Sequence No
+	nDownloadThreadCount int                 // Number Of Downloading Thread
 }
 
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Client
 func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
-	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
-	// Variable Definition
-	var objResourceList ResourceList                          // uri list object
-	var objDownloadedMap = make(map[string]DownloadStatus, 0) // map object [URI]true:sucess?false:failure
+	var objResourceList ResourceList // uri list object
 	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
+	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
 	// login
+	pSelf.nLastSeqNo = -1
+	pSelf.nDownloadThreadCount = 0
 	pSelf.dumpProgress(0)
 	if false == pSelf.login2Server() {
 		log.Println("[ERR] FileSyncClient.DoTasks() : logon failure : invalid accountid or password, u r not allowed 2 logon the server.")
@@ -92,52 +94,46 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	// downloading resources
 	pSelf.TaskCount = len(objResourceList.Download)
 	pSelf.dumpProgress(0)
-	pSelf.objTaskChannel = make(chan int, 3)
-	pSelf.objDownloadedChannel = make(chan DownloadStatus)
-	defer close(pSelf.objDownloadedChannel) // defer this operation 2 release the channel object.
-	for i, objRes := range objResourceList.Download {
-		pSelf.objTaskChannel <- i
-		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder)
-	}
+	pSelf.objTaskChannel = make(chan int, 5)
+	pSelf.objResChannel = make(chan DownloadStatus, 32*8)
+	defer close(pSelf.objTaskChannel) // defer this operation 2 release the channel object.
+	defer close(pSelf.objResChannel)  // defer this operation 2 release the channel object.
+	go pSelf.DownloadResources(sTargetFolder, objResourceList)
 	///////////////////////////// Check Tasks Status //////////////////////////////
-	log.Printf("[INF] FileSyncClient.DoTasks() : [OK] -------------------- Downloading Task Number Is -----------> [%d]", pSelf.TaskCount)
-	for i := 0; i < pSelf.TTL && len(objDownloadedMap) < pSelf.TaskCount; {
+	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; {
 		select {
-		case objStatus := <-pSelf.objDownloadedChannel:
+		case objStatus := <-pSelf.objResChannel:
 			if objStatus.Status == ST_Error {
-				log.Println("[ERROR] FileSyncClient.DoTasks() : Mission Terminated!!! ")
+				log.Println("[ERROR] FileSyncClient.DoTasks() : error in downloading resource : ", objStatus.URI)
+				log.Println("[ERROR] FileSyncClient.DoTasks() : ----------------- Mission Terminated!!! ------------------")
+				os.Exit(-100)
+			}
+
+			if false == objUnzip.Unzip(objStatus.LocalPath, objStatus.URI) {
+				os.Remove(objStatus.LocalPath)
+				log.Println("[ERROR] FileSyncClient.DoTasks() :  error in uncompression : ", objStatus.URI)
+				os.Exit(-100)
 				return
 			}
-			objDownloadedMap[objStatus.URI] = objStatus
+
+			pSelf.dumpProgress(1)
+			pSelf.nLastSeqNo = objStatus.SeqNo
+			log.Printf("[INF] FileSyncClient.DoTasks() : [OK] Resource Info -------------> %s, seq = (%d-->%d)", objStatus.URI, objStatus.SeqNo, pSelf.TaskCount)
 		default:
 			time.Sleep(1 * time.Second)
-		}
-	}
-	///////////////////////////// Uncompressing
-	log.Printf("[INF] FileSyncClient.DoTasks() : ................... Uncompressing Local Files (%d==%d) ................", len(objResourceList.Download), len(objDownloadedMap))
-	for _, objRes := range objResourceList.Download {
-		if objInfo, ok := objDownloadedMap[objRes.URI]; ok {
-			if objInfo.Status == ST_Completed {
-				if false == objUnzip.Unzip(objInfo.LocalPath, objInfo.URI) {
-					os.Remove(objInfo.LocalPath)
-					return
-				}
-
-				pSelf.dumpProgress(1)
-				log.Println("[INF] FileSyncClient.DoTasks() : [Uncompressed] -->", objRes.URI)
-			} else if objInfo.Status == ST_Error {
-				log.Println("[ERR] FileSyncClient.DoTasks() :  error in uncompression : ", objRes.URI)
-				os.Remove(objInfo.LocalPath)
-				return
-			}
-		} else {
-			log.Println("[ERR] FileSyncClient.DoTasks() : miss download file info : ", objRes.URI)
-			return
 		}
 	}
 
 	pSelf.dumpProgress(0)
 	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
+}
+
+func (pSelf *FileSyncClient) DownloadResources(sTargetFolder string, objResourceList ResourceList) {
+	for i, objRes := range objResourceList.Download {
+		pSelf.objTaskChannel <- i
+		pSelf.nDownloadThreadCount++
+		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i)
+	}
 }
 
 ///////////////////////////////////// [InnerMethod]
@@ -146,24 +142,31 @@ type DownloadStatus struct {
 	URI       string         // download url
 	Status    TaskStatusType // task status
 	LocalPath string         // File Path In Disk
+	SeqNo     int            // Sequence No
 }
 
-func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder string) bool {
+func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int) bool {
 	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
 
 	defer func() {
-		nSequenceNo := <-pSelf.objTaskChannel
 		if nTaskStatus == ST_Completed {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] (%d) --> %s (%d)", nSequenceNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] (%d) --> %s (Running:%d)", nSeqNo, sUri, len(pSelf.objTaskChannel))
 		} else if nTaskStatus == ST_Ignore {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] (%d) --> %s (%d)", nSequenceNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] (%d) --> %s (Running:%d)", nSeqNo, sUri, len(pSelf.objTaskChannel))
 		} else if nTaskStatus == ST_Error {
-			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] (%d) Deleting File : --> %s (%d)", nSequenceNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] (%d) Deleting File : --> %s (Running:%d)", nSeqNo, sUri, len(pSelf.objTaskChannel))
 			os.Remove(sLocalPath)
 		}
-		pSelf.objDownloadedChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath} // Mission Finished!
+
+		for (pSelf.nLastSeqNo + 1) < nSeqNo {
+			time.Sleep(time.Second)
+		}
+
+		pSelf.nDownloadThreadCount--
+		<-pSelf.objTaskChannel
+		pSelf.objResChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
 	}()
 
 	if true == objFCompare.Compare() {
@@ -171,14 +174,12 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 	} else {
 		// generate list Url string
 		var sUrl string = fmt.Sprintf("http://%s/get?uri=%s", pSelf.ServerHost, sUri)
-		log.Println("[INF] FileSyncClient.fetchResource() : [Downloading] -->", sUri, sMD5, sDateTime)
-
 		// parse && read response string
 		httpClient := http.Client{CheckRedirect: nil, Jar: globalCurrentCookieJar}
 		httpReq, err := http.NewRequest("GET", sUrl, nil)
 		httpRes, err := httpClient.Do(httpReq)
 		if err != nil {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, err.Error())
+			log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, sMD5, sDateTime, err.Error())
 			return false
 		}
 
@@ -186,7 +187,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		defer httpRes.Body.Close()
 		sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
 		if err != nil {
-			log.Println("[WARN] FileSyncClient.fetchResource() : failed 2 fetch absolute path of program")
+			log.Println("[WARN] FileSyncClient.fetchResource() : failed 2 fetch absolute path of program", sUrl, sMD5, sDateTime)
 			return false
 		}
 
@@ -206,7 +207,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		objDataBuf := &bytes.Buffer{}
 		_, err2 := objDataBuf.ReadFrom(httpRes.Body)
 		if err2 != nil {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, err.Error())
+			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, sMD5, sDateTime, err.Error())
 			return false
 		}
 
@@ -215,7 +216,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 		defer objFile.Close()
 		_, err = io.Copy(objFile, objDataBuf)
 		if err != nil {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot save 2 file : ", sUri, err.Error())
+			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot save 2 file : ", sUri, sMD5, sDateTime, err.Error())
 			return false
 		}
 

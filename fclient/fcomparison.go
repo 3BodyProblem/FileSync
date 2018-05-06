@@ -47,8 +47,7 @@ func (pSelf *FComparison) Compare() bool {
 	sLocalFile := filepath.Join(sLocalFolder, pSelf.URI)
 	objFile, err := os.Open(sLocalFile)
 	if err != nil {
-		log.Println("[INF] FComparison.Compare() : local resource is not exist :", sLocalFile)
-		return false
+		return false // log.Println("[INF] FComparison.Compare() : local resource is not exist :", sLocalFile)
 	}
 
 	// parepare 2 generate md5
