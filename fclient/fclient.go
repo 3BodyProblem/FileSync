@@ -92,7 +92,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	// downloading resources
 	pSelf.TaskCount = len(objResourceList.Download)
 	pSelf.dumpProgress(0)
-	pSelf.objTaskChannel = make(chan int, 6)
+	pSelf.objTaskChannel = make(chan int, 3)
 	pSelf.objDownloadedChannel = make(chan DownloadStatus)
 	defer close(pSelf.objDownloadedChannel) // defer this operation 2 release the channel object.
 	for i, objRes := range objResourceList.Download {
@@ -101,15 +101,13 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	}
 	///////////////////////////// Check Tasks Status //////////////////////////////
 	log.Printf("[INF] FileSyncClient.DoTasks() : [OK] -------------------- Downloading Task Number Is -----------> [%d]", pSelf.TaskCount)
-	nOKCount := 0
-	for i := 0; i < pSelf.TTL && nOKCount < pSelf.TaskCount; {
+	for i := 0; i < pSelf.TTL && len(objDownloadedMap) < pSelf.TaskCount; {
 		select {
 		case objStatus := <-pSelf.objDownloadedChannel:
 			if objStatus.Status == ST_Error {
 				log.Println("[ERROR] FileSyncClient.DoTasks() : Mission Terminated!!! ")
 				return
 			}
-			nOKCount++
 			objDownloadedMap[objStatus.URI] = objStatus
 		default:
 			time.Sleep(1 * time.Second)
@@ -119,13 +117,19 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	log.Printf("[INF] FileSyncClient.DoTasks() : ................... Uncompressing Local Files (%d==%d) ................", len(objResourceList.Download), len(objDownloadedMap))
 	for _, objRes := range objResourceList.Download {
 		if objInfo, ok := objDownloadedMap[objRes.URI]; ok {
-			if false == objUnzip.Unzip(objInfo.LocalPath, objInfo.URI) {
+			if objInfo.Status == ST_Completed {
+				if false == objUnzip.Unzip(objInfo.LocalPath, objInfo.URI) {
+					os.Remove(objInfo.LocalPath)
+					return
+				}
+
+				pSelf.dumpProgress(1)
+				log.Println("[INF] FileSyncClient.DoTasks() : [Uncompressed] -->", objRes.URI)
+			} else if objInfo.Status == ST_Error {
+				log.Println("[ERR] FileSyncClient.DoTasks() :  error in uncompression : ", objRes.URI)
 				os.Remove(objInfo.LocalPath)
 				return
 			}
-
-			pSelf.dumpProgress(1)
-			log.Println("[INF] FileSyncClient.fetchResource() : [Uncompressed] -->", objRes.URI)
 		} else {
 			log.Println("[ERR] FileSyncClient.DoTasks() : miss download file info : ", objRes.URI)
 			return
