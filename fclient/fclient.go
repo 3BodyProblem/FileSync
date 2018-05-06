@@ -59,75 +59,107 @@ type ResourceList struct {
 
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
 type FileSyncClient struct {
-	ServerHost    string // Server IP + Port
-	Account       string // Server Login Username
-	Password      string // Server Login Password
-	TTL           int    // Time To Live
-	ProgressFile  string // Progress File Path
-	TaskCount     int    // Task Count
-	CompleteCount int    // Task Complete Count
+	ServerHost           string              // Server IP + Port
+	Account              string              // Server Login Username
+	Password             string              // Server Login Password
+	TTL                  int                 // Time To Live
+	ProgressFile         string              // Progress File Path
+	TaskCount            int                 // Task Count
+	CompleteCount        int                 // Task Complete Count
+	objTaskChannel       chan int            // Channel Of Actived Task
+	objDownloadedChannel chan DownloadStatus // Channel Of Download Task
 }
 
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Client
 func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
-	log.Println("[INF] FileSyncClient.DoTasks() : Executing Tasks ...... ")
+	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
 	// Variable Definition
-	var objResourceList ResourceList // uri list object
-
+	var objResourceList ResourceList                          // uri list object
+	var objDownloadedMap = make(map[string]DownloadStatus, 0) // map object [URI]true:sucess?false:failure
+	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
 	// login
+	pSelf.dumpProgress(0)
 	if false == pSelf.login2Server() {
 		log.Println("[ERR] FileSyncClient.DoTasks() : logon failure : invalid accountid or password, u r not allowed 2 logon the server.")
 		return
 	}
-
 	// list resource table
 	if false == pSelf.fetchResList(&objResourceList) {
 		log.Println("[ERR] FileSyncClient.DoTasks() : cannot list resource table from server.")
 		return
 	}
-
 	// downloading resources
-	pSelf.CompleteCount = 0
 	pSelf.TaskCount = len(objResourceList.Download)
-	log.Println("[INF] FileSyncClient.DoTasks() : Task Number = ", pSelf.TaskCount)
+	pSelf.dumpProgress(0)
+	pSelf.objTaskChannel = make(chan int, 6)
+	pSelf.objDownloadedChannel = make(chan DownloadStatus)
+	defer close(pSelf.objDownloadedChannel) // defer this operation 2 release the channel object.
+	for i, objRes := range objResourceList.Download {
+		pSelf.objTaskChannel <- i
+		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder)
+	}
+	///////////////////////////// Check Tasks Status //////////////////////////////
+	log.Printf("[INF] FileSyncClient.DoTasks() : [OK] -------------------- Downloading Task Number Is -----------> [%d]", pSelf.TaskCount)
+	nOKCount := 0
+	for i := 0; i < pSelf.TTL && nOKCount < pSelf.TaskCount; {
+		select {
+		case objStatus := <-pSelf.objDownloadedChannel:
+			if objStatus.Status == ST_Error {
+				log.Println("[ERROR] FileSyncClient.DoTasks() : Mission Terminated!!! ")
+				return
+			}
+			nOKCount++
+			objDownloadedMap[objStatus.URI] = objStatus
+		default:
+			time.Sleep(1 * time.Second)
+		}
+	}
+	///////////////////////////// Uncompressing
+	log.Printf("[INF] FileSyncClient.DoTasks() : ................... Uncompressing Local Files (%d==%d) ................", len(objResourceList.Download), len(objDownloadedMap))
 	for _, objRes := range objResourceList.Download {
-		if false == pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder) {
-			log.Println("[ERROR] FileSyncClient.DoTasks() : Mission Terminated ...... ")
-			return
-		} else {
+		if objInfo, ok := objDownloadedMap[objRes.URI]; ok {
+			if false == objUnzip.Unzip(objInfo.LocalPath, objInfo.URI) {
+				os.Remove(objInfo.LocalPath)
+				return
+			}
+
 			pSelf.dumpProgress(1)
+			log.Println("[INF] FileSyncClient.fetchResource() : [Uncompressed] -->", objRes.URI)
+		} else {
+			log.Println("[ERR] FileSyncClient.DoTasks() : miss download file info : ", objRes.URI)
+			return
 		}
 	}
 
 	pSelf.dumpProgress(0)
-	log.Println("[INF] FileSyncClient.DoTasks() : Mission Completed ...... ")
+	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
 }
 
 ///////////////////////////////////// [InnerMethod]
+// [method] download resource
+type DownloadStatus struct {
+	URI       string         // download url
+	Status    TaskStatusType // task status
+	LocalPath string         // File Path In Disk
+}
+
 func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder string) bool {
 	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
-	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
 
 	defer func() {
-		if ST_Completed == nTaskStatus {
-			if false == objUnzip.Unzip(sLocalPath, sUri) {
-				nTaskStatus = ST_Error
-			} else {
-				log.Println("[INF] FileSyncClient.fetchResource() : [Complete] -->", sUri)
-			}
-		}
-
-		if ST_Ignore == nTaskStatus {
-			log.Println("[INF] FileSyncClient.DoTasks() : [Ignored] -->", sUri)
-		}
-
-		if ST_Error == nTaskStatus {
-			log.Println("[ERR] FileSyncClient.fetchResource() : [Exception] --> Remove Cache File =", sLocalPath)
+		nSequenceNo := <-pSelf.objTaskChannel
+		if nTaskStatus == ST_Completed {
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] (%d) --> %s (%d)", nSequenceNo, sUri, len(pSelf.objTaskChannel))
+		} else if nTaskStatus == ST_Ignore {
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] (%d) --> %s (%d)", nSequenceNo, sUri, len(pSelf.objTaskChannel))
+		} else if nTaskStatus == ST_Error {
+			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] (%d) Deleting File : --> %s (%d)", nSequenceNo, sUri, len(pSelf.objTaskChannel))
 			os.Remove(sLocalPath)
 		}
+		pSelf.objDownloadedChannel <- DownloadStatus{URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath} // Mission Finished!
 	}()
 
 	if true == objFCompare.Compare() {
@@ -174,6 +206,7 @@ func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder 
 			return false
 		}
 
+		// save 2 local file
 		objFile, _ := os.Create(sLocalFile)
 		defer objFile.Close()
 		_, err = io.Copy(objFile, objDataBuf)
