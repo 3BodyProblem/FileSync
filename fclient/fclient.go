@@ -109,11 +109,13 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 				os.Exit(-100)
 			}
 
-			if false == objUnzip.Unzip(objStatus.LocalPath, objStatus.URI) {
-				os.Remove(objStatus.LocalPath)
-				log.Println("[ERROR] FileSyncClient.DoTasks() :  error in uncompression : ", objStatus.URI)
-				os.Exit(-100)
-				return
+			if objStatus.Status == ST_Completed {
+				if false == objUnzip.Unzip(objStatus.LocalPath, objStatus.URI) {
+					os.Remove(objStatus.LocalPath)
+					log.Println("[ERROR] FileSyncClient.DoTasks() :  error in uncompression : ", objStatus.URI)
+					os.Exit(-100)
+					return
+				}
 			}
 
 			pSelf.dumpProgress(1)
