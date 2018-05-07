@@ -401,21 +401,29 @@ func (pSelf *Minutes5RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 
 		// cal. 5 minutes k-lines
 		nCurTime, _ := strconv.Atoi(lstRecords[1])
-		nCurTime /= 1000
+		nCurTime /= 100000
 		objMin5.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
 		objMin5.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
 		objMin5.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
 
 		if objMin5.Time == 0 {
-			objMin5.Time = nCurTime + 1
+			objMin5.Time = (nCurTime + 5) * 100
+			objMin5.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
+			objMin5.High, _ = strconv.ParseFloat(lstRecords[3], 64)
+			objMin5.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
+			objMin5.Amount, _ = strconv.ParseFloat(lstRecords[7], 64)
+			objMin5.Volume, _ = strconv.ParseInt(lstRecords[8], 10, 64)
+			objMin5.OpenInterest, _ = strconv.ParseInt(lstRecords[9], 10, 64)
+			objMin5.NumTrades, _ = strconv.ParseInt(lstRecords[10], 10, 64)
+			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)
 		}
 
-		if objMin5.Time != nCurTime { // begin
+		if objMin5.Time <= nCurTime*100 { // begin
 			//if 0 != i {
 			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin5.Date, objMin5.Time, objMin5.Open, objMin5.High, objMin5.Low, objMin5.Close, objMin5.Settle, objMin5.Amount, objMin5.Volume, objMin5.OpenInterest, objMin5.NumTrades, objMin5.Voip)
 			//}
 
-			objMin5.Time = nCurTime + 1
+			objMin5.Time = (nCurTime + 5) * 100
 			objMin5.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
 			objMin5.High, _ = strconv.ParseFloat(lstRecords[3], 64)
 			objMin5.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
