@@ -68,7 +68,7 @@ type RangeClass []RangeStruct
 func (pSelf *RangeClass) CodeInRange(sCodeNum string) bool {
 	nCodeNum, err := strconv.Atoi(sCodeNum)
 	if nil != err {
-		log.Println("[ERROR] RangeClass.CodeInRange() : code is not digital: ", sCodeNum)
+		log.Println("[ERR] RangeClass.CodeInRange() : code is not digital: ", sCodeNum)
 		return false
 	}
 
@@ -78,6 +78,7 @@ func (pSelf *RangeClass) CodeInRange(sCodeNum string) bool {
 		}
 	}
 
+	//log.Println("[INF] RangeClass.CodeInRange() : ignore code : ", sCodeNum)
 	return false
 }
 

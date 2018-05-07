@@ -328,6 +328,15 @@ func (pSelf *Minutes5RecordIO) CodeInWhiteTable(sFileName string) bool {
 	}
 
 	nEnd := strings.LastIndexAny(sFileName, ".")
+	nFileYear, err := strconv.Atoi(sFileName[nEnd-4 : nEnd])
+	if nil != err {
+		log.Println("[ERR] Minutes1RecordIO.CodeInWhiteTable() : Year In FileName is not digital: ", sFileName, nFileYear)
+		return false
+	}
+	if time.Now().Year()-nFileYear >= 2 {
+		log.Println(sFileName, nFileYear)
+		return false
+	}
 	nEnd = nEnd - 5
 	sCodeNum := sFileName[nEnd-6 : nEnd]
 
@@ -344,6 +353,7 @@ func (pSelf *Minutes5RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 	var bLine []byte
 	var i int = 0
 	var nReturnDate int = -100
+	var objToday time.Time = time.Now()
 	var rstr string = ""
 	var objMin5 struct {
 		Date         int     // date
@@ -370,6 +380,13 @@ func (pSelf *Minutes5RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 		}
 		objMin5.Date, err = strconv.Atoi(lstRecords[0])
 		if err != nil {
+			continue
+		}
+
+		objRecordDate := time.Date(objMin5.Date/10000, time.Month(objMin5.Date%10000/100), objMin5.Date%100, 21, 6, 9, 0, time.Local)
+		subHours := objToday.Sub(objRecordDate)
+		nDays := subHours.Hours() / 24
+		if nDays > 366 {
 			continue
 		}
 
@@ -443,6 +460,14 @@ func (pSelf *Minutes1RecordIO) CodeInWhiteTable(sFileName string) bool {
 	}
 
 	nEnd := strings.LastIndexAny(sFileName, ".")
+	nFileYear, err := strconv.Atoi(sFileName[nEnd-4 : nEnd])
+	if nil != err {
+		log.Println("[ERR] Minutes1RecordIO.CodeInWhiteTable() : Year In FileName is not digital: ", sFileName, nFileYear)
+		return false
+	}
+	if time.Now().Year()-nFileYear >= 2 {
+		return false
+	}
 	nEnd = nEnd - 5
 	sCodeNum := sFileName[nEnd-6 : nEnd]
 
@@ -453,6 +478,7 @@ func (pSelf *Minutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 	var nReturnDate int = -100
 	var rstr string = ""
 	var nOffset int = 0
+	var objToday time.Time = time.Now()
 
 	for _, bLine := range bytes.Split(bytesData, []byte("\n")) {
 		nOffset += (len(bLine) + 1)
@@ -462,6 +488,13 @@ func (pSelf *Minutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 		}
 		nDate, err := strconv.Atoi(sFirstFields)
 		if err != nil {
+			continue
+		}
+
+		objRecordDate := time.Date(nDate/10000, time.Month(nDate%10000/100), nDate%100, 21, 6, 9, 0, time.Local)
+		subHours := objToday.Sub(objRecordDate)
+		nDays := subHours.Hours() / 24
+		if nDays > 14 {
 			continue
 		}
 
