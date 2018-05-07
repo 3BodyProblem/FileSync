@@ -335,7 +335,6 @@ func (pSelf *Minutes5RecordIO) CodeInWhiteTable(sFileName string) bool {
 		return false
 	}
 	if time.Now().Year()-nFileYear >= 2 {
-		log.Println(sFileName, nFileYear)
 		return false
 	}
 	nEnd = nEnd - 5
