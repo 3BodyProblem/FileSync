@@ -337,8 +337,9 @@ func (pSelf *Minutes5RecordIO) CodeInWhiteTable(sFileName string) bool {
 	if time.Now().Year()-nFileYear >= 2 {
 		return false
 	}
+	nBegin := strings.LastIndexAny(sFileName, "MIN")
 	nEnd = nEnd - 5
-	sCodeNum := sFileName[nEnd-6 : nEnd]
+	sCodeNum := sFileName[nBegin+1 : nEnd]
 
 	return pSelf.CodeRangeFilter.CodeInRange(sCodeNum)
 }
@@ -468,8 +469,9 @@ func (pSelf *Minutes1RecordIO) CodeInWhiteTable(sFileName string) bool {
 	if time.Now().Year()-nFileYear >= 2 {
 		return false
 	}
+	nBegin := strings.LastIndexAny(sFileName, "MIN")
 	nEnd = nEnd - 5
-	sCodeNum := sFileName[nEnd-6 : nEnd]
+	sCodeNum := sFileName[nBegin+1 : nEnd]
 
 	return pSelf.CodeRangeFilter.CodeInRange(sCodeNum)
 }
@@ -522,8 +524,9 @@ func (pSelf *Day1RecordIO) CodeInWhiteTable(sFileName string) bool {
 		return true
 	}
 
+	nBegin := strings.LastIndexAny(sFileName, "DAY")
 	nEnd := strings.LastIndexAny(sFileName, ".")
-	sCodeNum := sFileName[nEnd-6 : nEnd]
+	sCodeNum := sFileName[nBegin+1 : nEnd]
 
 	return pSelf.CodeRangeFilter.CodeInRange(sCodeNum)
 }
