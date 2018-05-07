@@ -135,13 +135,14 @@ func (pSelf *BaseRecordIO) GenFilePath(sFileName string) string {
 }
 
 func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
-	var nYear int = time.Now().Year()
-	var nMonth int = int(time.Now().Month())
-	var nDay int = int(time.Now().Day())
-	var nToday int = nYear*10000 + nMonth*100 + nDay
 	var sFile string = ""
+	var objToday time.Time = time.Now()
 
-	if nToday/100 == nDate/100 { ////// Current Month
+	objRecordDate := time.Date(nDate/10000, time.Month(nDate%10000/100), nDate%100, 21, 6, 9, 0, time.Local)
+	subHours := objToday.Sub(objRecordDate)
+	nDays := subHours.Hours() / 24
+
+	if nDays <= 16 { ////// Current Month
 		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
 	} else { ////////////////////////// Not Current Month
 		nDD := (nDate % 100) ////////// One File With 2 Week's Data Inside
