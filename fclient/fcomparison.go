@@ -41,8 +41,7 @@ func (pSelf *FComparison) Compare() bool {
 	}
 
 	sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
-	log.Printf("[INF] FComparison.Compare() : [Comparing]    (%s)   VS   (%s) ", pSelf.URI, filepath.Join(sLocalFolder, pSelf.URI))
-
+	//log.Printf("[INF] FComparison.Compare() : [Comparing] (%s)  VS  (%s) ", pSelf.URI, filepath.Join(sLocalFolder, pSelf.URI))
 	// get absolute path of URI in local machine
 	sLocalFile := filepath.Join(sLocalFolder, pSelf.URI)
 	objFile, err := os.Open(sLocalFile)

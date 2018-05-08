@@ -37,7 +37,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 
 	sZipSrcPath = strings.Replace(sZipSrcPath, "\\", "/", -1)
 	sLocalFolder = strings.Replace(sLocalFolder, "\\", "/", -1)
-	log.Printf("[INF] Uncompress.Unzip() : [Uncompressing] zip file %s --> %s", sZipSrcPath, sLocalFolder)
 	objZipReader, err := os.Open(sZipSrcPath)
 	if err != nil {
 		log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot open zip file :", sZipSrcPath, err.Error())
@@ -74,7 +73,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			}
 			err = os.MkdirAll(sTargetFolder, 0755)
 			if err != nil {
-				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 tar file, folder: ", sTargetFolder, err.Error())
+				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 tar file, folder: ", sTargetFolder, sLocalFolder, err.Error())
 				return false
 			}
 
@@ -82,7 +81,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
 			fw, err := os.OpenFile(sTargetFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
-				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, err.Error())
+				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, sLocalFolder, err.Error())
 				return false
 			}
 			defer fw.Close()
@@ -100,7 +99,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 
 			_, err = io.Copy(fw, objTarReader)
 			if err != nil {
-				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot write tar file, file name =", sTargetFile, err.Error())
+				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot write tar file, file name =", sTargetFile, sLocalFolder, err.Error())
 				fw.Close()
 				return false
 			}

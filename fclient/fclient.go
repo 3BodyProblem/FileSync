@@ -121,12 +121,9 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 				os.Exit(-100)
 			}
 
-			log.Println("exexexex11111111111")
 			if objStatus.Status == ST_Completed {
 				go pSelf.ExtractResData(sTargetFolder, objStatus)
-				log.Println("exexexex2222222222")
 			}
-			log.Println("exexexex333333333333")
 		default:
 			time.Sleep(1 * time.Second)
 		}
@@ -148,33 +145,40 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 		return
 	}
 
-	log.Println("extract................1")
-	if objDataSeq, ok := pSelf.objMapDataSeq[objResInfo.DataType]; ok {
-		objDataSeq.UncompressFlag = true
-		objDataSeq.LastSeqNo = objResInfo.SeqNo
-		pSelf.objMapDataSeq[objResInfo.DataType] = objDataSeq
-		log.Println("extract................2")
+	bLoop := true
+	for true == bLoop {
+		pSelf.objSeqLock.Lock()
+		if objDataSeq, ok := pSelf.objMapDataSeq[objResInfo.DataType]; ok {
+			if (objDataSeq.LastSeqNo + 1) < objResInfo.SeqNo /* && false == objDataSeq.UncompressFlag*/ {
+				time.Sleep(time.Second)
+			} else {
+				bLoop = false
+				objDataSeq.UncompressFlag = false
+				objDataSeq.LastSeqNo = objResInfo.SeqNo
+				pSelf.objMapDataSeq[objResInfo.DataType] = objDataSeq
+			}
+		}
+		pSelf.objSeqLock.Unlock()
 	}
-	log.Println("extract................3")
 
 	pSelf.dumpProgress(1)
 	pSelf.nExtractThreadCount--
-	log.Printf("[INF] FileSyncClient.ExtractResData() : [OK] ResFile Extracted! ----------> %s, seq = (%d-->%d)", objResInfo.URI, objResInfo.SeqNo, pSelf.TaskCount)
+	log.Printf("[INF] FileSyncClient.ExtractResData() : [OK] Res(Seq:%d->%d) Extracted(%d)! >>>>>>>>>>>>>>>>> %s", objResInfo.SeqNo, pSelf.TaskCount, pSelf.nExtractThreadCount, objResInfo.URI)
 }
 
 func (pSelf *FileSyncClient) DownloadResources(sTargetFolder string, objResourceList ResourceList) {
 	for i, objRes := range objResourceList.Download {
 		pSelf.objTaskChannel <- i
 		pSelf.nDownloadThreadCount++
-		log.Println("a111111111111")
+
 		if _, ok := pSelf.objMapDataSeq[objRes.TYPE]; ok {
 		} else {
-			log.Println("b2222222222222")
-			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: -1, UnusedFlag: true, UncompressFlag: true}
+			pSelf.objSeqLock.Lock()
+			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), UnusedFlag: true, UncompressFlag: true}
+			pSelf.objSeqLock.Unlock()
 		}
-		log.Println("c333333333333")
+
 		go pSelf.fetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i)
-		log.Println("d444444444444")
 	}
 }
 
@@ -202,33 +206,27 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] %s(%d) Deleting File : --> %s (Running:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel))
 			os.Remove(sLocalPath)
 		}
-		log.Println("enter..............................")
-		//pSelf.objSeqLock.Lock()
-		//defer pSelf.objSeqLock.Unlock()
-		if objDataSeq, ok := pSelf.objMapDataSeq[sDataType]; ok {
-			if true == objDataSeq.UnusedFlag {
-				objDataSeq.UnusedFlag = false
-			} else {
-				for (objDataSeq.LastSeqNo+1) < nSeqNo && true == objDataSeq.UncompressFlag {
-					log.Println("????????????????", objDataSeq.LastSeqNo, nSeqNo, objDataSeq.UnusedFlag, objDataSeq.UncompressFlag)
+
+		bLoop := true
+		for true == bLoop {
+			pSelf.objSeqLock.Lock()
+			if objDataSeq, ok := pSelf.objMapDataSeq[sDataType]; ok {
+				if (objDataSeq.LastSeqNo + 1) < nSeqNo /*&& true == objDataSeq.UncompressFlag*/ {
 					time.Sleep(time.Second)
+				} else {
+					bLoop = false
+					objDataSeq.LastSeqNo = nSeqNo
+					objDataSeq.UncompressFlag = true
+					pSelf.objMapDataSeq[sDataType] = objDataSeq
 				}
 			}
-			log.Println("......................, ", objDataSeq.LastSeqNo, nSeqNo, objDataSeq.UnusedFlag, objDataSeq.UncompressFlag)
-			objDataSeq.LastSeqNo = nSeqNo
-			objDataSeq.UncompressFlag = true
-			pSelf.objMapDataSeq[sDataType] = objDataSeq
-			abc, _ := pSelf.objMapDataSeq[sDataType]
-			log.Println("####################### ", abc.LastSeqNo, nSeqNo, abc.UnusedFlag, abc.UncompressFlag)
-		} else {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  unknow data type : ", sDataType, sMD5, sDateTime)
-			return false
+			pSelf.objSeqLock.Unlock()
 		}
 
 		pSelf.nDownloadThreadCount--
 		<-pSelf.objTaskChannel
 		pSelf.objResChannel <- DownloadStatus{DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
-		log.Println("........................................................................")
+
 		return true
 	}()
 
@@ -415,7 +413,6 @@ func (pSelf *FileSyncClient) dumpProgress(nAddRef int) bool {
 			return false
 		}
 
-		log.Printf("[INF] FileSyncClient.dumpProgress() : Uncompressor Count = %d, progress : %s", pSelf.nExtractThreadCount, string(sResponse))
 		objFile.WriteString(xml.Header)
 		objFile.Write(sResponse)
 
