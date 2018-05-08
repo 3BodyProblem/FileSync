@@ -110,7 +110,23 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	pSelf.objResChannel = make(chan DownloadStatus, 32*8)
 	defer close(pSelf.objTaskChannel) // defer this operation 2 release the channel object.
 	defer close(pSelf.objResChannel)  // defer this operation 2 release the channel object.
-	go pSelf.DownloadResources(sTargetFolder, objResourceList)
+
+	var nBegin int = 0
+	var nEnd int = 0
+	var sLastType string = ""
+	for i, objRes := range objResourceList.Download {
+		if i == 0 {
+			sLastType = objRes.TYPE
+		}
+
+		if sLastType != objRes.TYPE {
+			nEnd = i
+			go pSelf.DownloadResources(sTargetFolder, objResourceList.Download[nBegin:nEnd])
+			nBegin = i
+		}
+	}
+
+	//go pSelf.DownloadResources(sTargetFolder, objResourceList)
 	///////////////////////////// Check Tasks Status //////////////////////////////
 	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; {
 		select {
@@ -166,8 +182,8 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 	log.Printf("[INF] FileSyncClient.ExtractResData() : [OK] Res(Seq:%d->%d) Extracted(%d)! >>>>>>>>>>>>>>>>> %s", objResInfo.SeqNo, pSelf.TaskCount, pSelf.nExtractThreadCount, objResInfo.URI)
 }
 
-func (pSelf *FileSyncClient) DownloadResources(sTargetFolder string, objResourceList ResourceList) {
-	for i, objRes := range objResourceList.Download {
+func (pSelf *FileSyncClient) DownloadResources(sTargetFolder string, lstRes []ResDownload /*objResourceList ResourceList*/) {
+	for i, objRes := range lstRes /*objResourceList.Download*/ {
 		pSelf.objTaskChannel <- i
 		pSelf.nDownloadThreadCount++
 
@@ -199,11 +215,11 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 
 	defer func() bool {
 		if nTaskStatus == ST_Completed {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] %s(%d) --> %s (Running:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] %s(%d) --> %s (Running:%d, Extract:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel), pSelf.nExtractThreadCount)
 		} else if nTaskStatus == ST_Ignore {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] %s(%d) --> %s (Running:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] %s(%d) --> %s (Running:%d, Extract:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel), pSelf.nExtractThreadCount)
 		} else if nTaskStatus == ST_Error {
-			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] %s(%d) Deleting File : --> %s (Running:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] %s(%d) Deleting File : --> %s (Running:%d, Extract:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel), pSelf.nExtractThreadCount)
 			os.Remove(sLocalPath)
 		}
 
