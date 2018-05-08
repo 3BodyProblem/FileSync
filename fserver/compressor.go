@@ -28,7 +28,7 @@ import (
 func init() {
 }
 
-///////////////////////////////////// Data Record IO Wrapper
+///////////////////////////////////// Data Record IO Wrapper ///////////////////////////////////////////
 type CompressHandles struct {
 	TarFile    *os.File     // .tar file handle
 	GZipWriter *gzip.Writer // gzip.Writer handle
@@ -172,12 +172,12 @@ func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 	return nil
 }
 
-///////////////////////////////////// Resources Compressor
+///////////////////////////////////// Resources Compressor ///////////////////////////////////////////
 type Compressor struct {
 	TargetFolder string // Root Folder
 }
 
-///////////////////////////////////// Private Method
+///////////////////////////////////// Private Method ///////////////////////////////////////////
 // Compress Folder Recursively
 func (pSelf *Compressor) compressFolder(sDestFile string, sSrcFolder string, sRecursivePath string, pILoader I_Record_IO) bool {
 	oDirFile, err := os.Open(sSrcFolder) // Open source diretory
@@ -253,7 +253,7 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 	return true
 }
 
-///////////////////////////////////// [OutterMethod]
+///////////////////////////////////// [OutterMethod] ///////////////////////////////////////////
 // [method] XCompress
 func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig, codeRange I_Range_OP) ([]ResDownload, bool) {
 	var lstRes []ResDownload
@@ -282,7 +282,7 @@ func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig
 	}
 }
 
-///////////////////////////////////// [InnerMethod]
+///////////////////////////////////// [InnerMethod] ///////////////////////////////////////////
 // [Method] load source data 2 targer folder
 func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader I_Record_IO) ([]ResDownload, bool) {
 	var lstRes []ResDownload
@@ -318,7 +318,7 @@ func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader 
 	return pILoader.Release(), true
 }
 
-///////////////////////// 5Minutes Lines
+///////////////////////// 5Minutes Lines ///////////////////////////////////////////
 type Minutes5RecordIO struct {
 	BaseRecordIO
 }
@@ -458,7 +458,7 @@ func (pSelf *Minutes5RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 	return []byte(rstr), nReturnDate, len(bytesData)
 }
 
-///////////////////////// 1Minutes Lines
+///////////////////////// 1Minutes Lines ///////////////////////////////////////////
 type Minutes1RecordIO struct {
 	BaseRecordIO
 }
@@ -522,7 +522,7 @@ func (pSelf *Minutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int)
 	return []byte(rstr), nReturnDate, len(bytesData)
 }
 
-///////////////////////// 1 Day Lines
+///////////////////////// 1 Day Lines ///////////////////////////////////////////
 type Day1RecordIO struct {
 	BaseRecordIO
 }
@@ -569,7 +569,7 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	return []byte(rstr), nReturnDate, len(bytesData)
 }
 
-///////////////////////// Weights Lines
+///////////////////////// Weights Lines ///////////////////////////////////////////
 type WeightRecordIO struct {
 	BaseRecordIO
 }
