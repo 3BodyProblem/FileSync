@@ -108,8 +108,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		}
 	}
 
-	log.Println("[INF] Uncompress.Unzip() : [Uncompressed] Done! zip file : ", sZipSrcPath)
-
 	return true
 }
 
