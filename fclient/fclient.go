@@ -47,6 +47,7 @@ func init() {
 // check xml result in response
 type ResDownload struct {
 	XMLName xml.Name `xml:"download"`
+	TYPE    string   `xml:"type,attr"`
 	URI     string   `xml:"uri,attr"`
 	MD5     string   `xml:"md5,attr"`
 	UPDATE  string   `xml:"update,attr"`
@@ -134,7 +135,7 @@ func (pSelf *FileSyncClient) DownloadResources(sTargetFolder string, objResource
 	for i, objRes := range objResourceList.Download {
 		pSelf.objTaskChannel <- i
 		pSelf.nDownloadThreadCount++
-		go pSelf.fetchResource(objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i)
+		go pSelf.fetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i)
 	}
 }
 
@@ -147,18 +148,18 @@ type DownloadStatus struct {
 	SeqNo     int            // Sequence No
 }
 
-func (pSelf *FileSyncClient) fetchResource(sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int) bool {
+func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int) bool {
 	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
 
 	defer func() {
 		if nTaskStatus == ST_Completed {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] (%d) --> %s (Running:%d)", nSeqNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] %s(%d) --> %s (Running:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel))
 		} else if nTaskStatus == ST_Ignore {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] (%d) --> %s (Running:%d)", nSeqNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] %s(%d) --> %s (Running:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel))
 		} else if nTaskStatus == ST_Error {
-			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] (%d) Deleting File : --> %s (Running:%d)", nSeqNo, sUri, len(pSelf.objTaskChannel))
+			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] %s(%d) Deleting File : --> %s (Running:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel))
 			os.Remove(sLocalPath)
 		}
 
