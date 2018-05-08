@@ -28,6 +28,7 @@ func init() {
 
 type ResDownload struct {
 	XMLName xml.Name `xml:"download"`
+	TYPE    string   `xml:"type,attr"`
 	URI     string   `xml:"uri,attr"`
 	MD5     string   `xml:"md5,attr"`
 	UPDATE  string   `xml:"update,attr"`

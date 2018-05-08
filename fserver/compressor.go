@@ -83,6 +83,7 @@ type I_Record_IO interface {
 }
 
 type BaseRecordIO struct {
+	DataType        string
 	CodeRangeFilter I_Range_OP
 	mapFileHandle   map[string]CompressHandles
 }
@@ -124,7 +125,7 @@ func (pSelf *BaseRecordIO) Release() []ResDownload {
 
 		sMD5 := strings.ToLower(fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5)))
 		log.Printf("[INF] BaseRecordIO.Release() : close file = %s, md5 = %s", sVal, sMD5)
-		lstRes = append(lstRes, ResDownload{URI: sVal, MD5: sMD5, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
+		lstRes = append(lstRes, ResDownload{TYPE: pSelf.DataType, URI: sVal, MD5: sMD5, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
 	}
 
 	return lstRes
@@ -255,9 +256,9 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 
 ///////////////////////////////////// [OutterMethod] ///////////////////////////////////////////
 // [method] XCompress
-func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig, codeRange I_Range_OP) ([]ResDownload, bool) {
+func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig, codeRange I_Range_OP) ([]ResDownload, bool) {
 	var lstRes []ResDownload
-	var sDataType string = strings.ToLower(sResName[strings.Index(sResName, "."):])              // data type (d1/m1/m5/wt)
+	var sDataType string = strings.ToLower(sResType[strings.Index(sResType, "."):])              // data type (d1/m1/m5/wt)
 	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.tar.gz)
 
 	sDestFolder = strings.Replace(sDestFolder, "\\", "/", -1)
@@ -265,16 +266,16 @@ func (pSelf *Compressor) XCompress(sResName string, objDataSrc *DataSourceConfig
 
 	switch {
 	case (objDataSrc.MkID == "sse" && sDataType == ".wt") || (objDataSrc.MkID == "szse" && sDataType == ".wt"):
-		objRecordIO := WeightRecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of Weight data loader
+		objRecordIO := WeightRecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of Weight data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "WEIGHT/WEIGHT."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".d1") || (objDataSrc.MkID == "szse" && sDataType == ".d1"):
-		objRecordIO := Day1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of Day data loader
+		objRecordIO := Day1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of Day data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "DAY/DAY."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m1") || (objDataSrc.MkID == "szse" && sDataType == ".m1"):
-		objRecordIO := Minutes1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of M1 data loader
+		objRecordIO := Minutes1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M1 data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN/MIN."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m5") || (objDataSrc.MkID == "szse" && sDataType == ".m5"):
-		objRecordIO := Minutes5RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange}} // policy of M5 data loader
+		objRecordIO := Minutes5RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M5 data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN5/MIN5."), objDataSrc.Folder, &objRecordIO)
 	default:
 		log.Printf("[ERR] Compressor.XCompress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)

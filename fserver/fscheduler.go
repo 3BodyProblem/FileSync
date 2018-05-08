@@ -155,15 +155,15 @@ func (pSelf *FileScheduler) Active() bool {
 			pSelf.codeRangeOfSZ = append(pSelf.codeRangeOfSZ, objRange)
 			log.Printf("[INF] FileScheduler.Active() : [Xml.Setting] SZSE.coderange: [%d ~ %d]", objRange.StartVal, objRange.EndVal)
 		default:
-			sSetting := strings.ToLower(objSetting.Name)
+			sResType := strings.ToLower(objSetting.Name)
 			if len(strings.Split(objSetting.Name, ".")) <= 1 {
 				log.Println("[WARNING] FileScheduler.Active() : [Xml.Setting] Ignore -> ", objSetting.Name)
 				continue
 			}
 
 			objSetting.Value = strings.Replace(objSetting.Value, "\\", "/", -1)
-			pSelf.DataSourceConfig[sSetting] = DataSourceConfig{MkID: strings.ToLower(strings.Split(objSetting.Name, ".")[0]), Folder: objSetting.Value}
-			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] ", sSetting, pSelf.DataSourceConfig[sSetting].MkID, pSelf.DataSourceConfig[sSetting].Folder)
+			pSelf.DataSourceConfig[sResType] = DataSourceConfig{MkID: strings.ToLower(strings.Split(objSetting.Name, ".")[0]), Folder: objSetting.Value}
+			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] ", sResType, pSelf.DataSourceConfig[sResType].MkID, pSelf.DataSourceConfig[sResType].Folder)
 		}
 	}
 
@@ -307,8 +307,8 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 			log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))
 
 			/////////////////////// iterate data source configuration && compress quotation files
-			for sResName, objDataSrcCfg := range pSelf.DataSourceConfig {
-				lstRes, bIsOk := objCompressor.XCompress(sResName, &objDataSrcCfg, pSelf.GetRangeOP(sResName))
+			for sResType, objDataSrcCfg := range pSelf.DataSourceConfig {
+				lstRes, bIsOk := objCompressor.XCompress(sResType, &objDataSrcCfg, pSelf.GetRangeOP(sResType))
 				if true == bIsOk {
 					/////////////// record resource path && MD5 which has been compressed
 					objNewResList.Download = append(objNewResList.Download, lstRes...)
