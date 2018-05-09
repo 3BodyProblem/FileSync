@@ -62,115 +62,97 @@ type ResourceList struct {
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
 
 type DataSeq struct {
-	LastSeqNo      int  // Last Sequence No
-	UnusedFlag     bool // UnUsed Flag
-	UncompressFlag bool // Undo Flag
+	LastSeqNo      int                 // Last Sequence No
+	NoCount        int                 // Number Of Resource
+	UnusedFlag     bool                // UnUsed Flag
+	UncompressFlag bool                // Undo Flag
+	TaskChannel    chan int            // Channel Of Actived Task
+	ResFileChannel chan DownloadStatus // Channel Of Download Task
 }
 
 type FileSyncClient struct {
-	ServerHost           string              // Server IP + Port
-	Account              string              // Server Login Username
-	Password             string              // Server Login Password
-	TTL                  int                 // Time To Live
-	ProgressFile         string              // Progress File Path
-	TaskCount            int                 // Task Count
-	CompleteCount        int                 // Task Complete Count
-	objTaskChannel       chan int            // Channel Of Actived Task
-	objResChannel        chan DownloadStatus // Channel Of Download Task
-	objSeqLock           *sync.Mutex         // Data Seq Map Locker
-	objMapDataSeq        map[string]DataSeq  // Map Of Last Sequence No
-	nDownloadThreadCount int                 // Number Of Downloading Thread
-	nExtractThreadCount  int                 // Number Of Extracting Thread
+	ServerHost    string             // Server IP + Port
+	Account       string             // Server Login Username
+	Password      string             // Server Login Password
+	TTL           int                // Time To Live
+	ProgressFile  string             // Progress File Path
+	TaskCount     int                // Task Count
+	CompleteCount int                // Task Complete Count
+	objSeqLock    *sync.Mutex        // Data Seq Map Locker
+	objMapDataSeq map[string]DataSeq // Map Of Last Sequence No
 }
 
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Client
 func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
+	var nEnd int = 0
+	var nBegin int = 0
+	var sCurDataType string = ""
 	var objResourceList ResourceList // uri list object
 	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
-	// login
 	pSelf.objSeqLock = new(sync.Mutex)
 	pSelf.objMapDataSeq = make(map[string]DataSeq)
-	pSelf.nExtractThreadCount = 0
-	pSelf.nDownloadThreadCount = 0
 	pSelf.dumpProgress(0)
-	if false == pSelf.login2Server() {
+	if false == pSelf.login2Server() { ////////////////////// Login 2 Server
 		log.Println("[ERR] FileSyncClient.DoTasks() : logon failure : invalid accountid or password, u r not allowed 2 logon the server.")
 		return
 	}
-	// list resource table
-	if false == pSelf.fetchResList(&objResourceList) {
+
+	if false == pSelf.fetchResList(&objResourceList) { ////// List Resource Table
 		log.Println("[ERR] FileSyncClient.DoTasks() : cannot list resource table from server.")
 		return
 	}
-	// downloading resources
-	pSelf.TaskCount = len(objResourceList.Download)
-	pSelf.dumpProgress(0)
-	pSelf.objTaskChannel = make(chan int, 5)
-	pSelf.objResChannel = make(chan DownloadStatus, 32*8)
-	defer close(pSelf.objTaskChannel) // defer this operation 2 release the channel object.
-	defer close(pSelf.objResChannel)  // defer this operation 2 release the channel object.
 
-	var nBegin int = 0
-	var nEnd int = 0
-	var sLastType string = ""
+	///////////////////// Dispatch Downloading Tasks
+	pSelf.TaskCount = len(objResourceList.Download)
 	for i, objRes := range objResourceList.Download {
 		if i == 0 {
-			sLastType = objRes.TYPE
+			sCurDataType = objRes.TYPE
 		}
-
-		if sLastType != objRes.TYPE {
+		if sCurDataType != objRes.TYPE {
 			nEnd = i
-			go pSelf.DownloadResources(sTargetFolder, objResourceList.Download[nBegin:nEnd])
+			log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s(%s) %d~%d, len=%d", sCurDataType, objRes.TYPE, nBegin, nEnd, len(objResourceList.Download[nBegin:nEnd]))
+			go pSelf.DownloadResources(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:nEnd])
 			nBegin = i
+			sCurDataType = objRes.TYPE
 		}
 	}
 
-	//go pSelf.DownloadResources(sTargetFolder, objResourceList)
+	if len(objResourceList.Download[nBegin:]) > 0 {
+		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), len(objResourceList.Download[nBegin:]))
+		go pSelf.DownloadResources(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:])
+	}
 	///////////////////////////// Check Tasks Status //////////////////////////////
-	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; {
-		select {
-		case objStatus := <-pSelf.objResChannel:
-			if objStatus.Status == ST_Error {
-				log.Println("[ERROR] FileSyncClient.DoTasks() : error in downloading resource : ", objStatus.URI)
-				log.Println("[ERROR] FileSyncClient.DoTasks() : ----------------- Mission Terminated!!! ------------------")
-				os.Exit(-100)
-			}
-
-			if objStatus.Status == ST_Completed {
-				go pSelf.ExtractResData(sTargetFolder, objStatus)
-			}
-		default:
-			time.Sleep(1 * time.Second)
-		}
+	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; i++ {
+		time.Sleep(1 * time.Second)
 	}
-
 	pSelf.dumpProgress(0)
+	time.Sleep(time.Second * 3)
 	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
 }
 
 func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo DownloadStatus) {
+	var nCount int = 0
 	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
 
-	pSelf.nExtractThreadCount++
 	if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
 		os.Remove(objResInfo.LocalPath)
 		log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.URI)
-		pSelf.nExtractThreadCount--
 		os.Exit(-100)
 		return
 	}
 
-	bLoop := true
-	for true == bLoop {
+	for bLoop := true; true == bLoop; {
 		pSelf.objSeqLock.Lock()
 		if objDataSeq, ok := pSelf.objMapDataSeq[objResInfo.DataType]; ok {
-			if (objDataSeq.LastSeqNo + 1) < objResInfo.SeqNo /* && false == objDataSeq.UncompressFlag*/ {
+			nCount = objDataSeq.NoCount
+			if (objDataSeq.LastSeqNo + 1) < objResInfo.SeqNo {
 				time.Sleep(time.Second)
 			} else {
 				bLoop = false
 				objDataSeq.UncompressFlag = false
 				objDataSeq.LastSeqNo = objResInfo.SeqNo
+				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, nCount, objResInfo.URI)
 				pSelf.objMapDataSeq[objResInfo.DataType] = objDataSeq
 			}
 		}
@@ -178,24 +160,47 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 	}
 
 	pSelf.dumpProgress(1)
-	pSelf.nExtractThreadCount--
-	log.Printf("[INF] FileSyncClient.ExtractResData() : [OK] Res(Seq:%d->%d) Extracted(%d)! >>>>>>>>>>>>>>>>> %s", objResInfo.SeqNo, pSelf.TaskCount, pSelf.nExtractThreadCount, objResInfo.URI)
 }
 
-func (pSelf *FileSyncClient) DownloadResources(sTargetFolder string, lstRes []ResDownload /*objResourceList ResourceList*/) {
-	for i, objRes := range lstRes /*objResourceList.Download*/ {
-		pSelf.objTaskChannel <- i
-		pSelf.nDownloadThreadCount++
-
+func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
+	for i, objRes := range lstDownloadTask {
+		/////////////////////////////// Arouse Downloading Tasks ////////////////////////////
 		if _, ok := pSelf.objMapDataSeq[objRes.TYPE]; ok {
 		} else {
 			pSelf.objSeqLock.Lock()
-			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), UnusedFlag: true, UncompressFlag: true}
+			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), TaskChannel: make(chan int, 3), ResFileChannel: make(chan DownloadStatus, 16), NoCount: len(lstDownloadTask), UnusedFlag: true, UncompressFlag: true}
 			pSelf.objSeqLock.Unlock()
 		}
 
-		go pSelf.fetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i)
+		pSelf.objMapDataSeq[objRes.TYPE].TaskChannel <- i // WAIT 2 Engage 1 Channel Resource
+		go pSelf.fetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i, pSelf.objMapDataSeq[objRes.TYPE].TaskChannel)
+		///////////////////////////// Check Extraction Tasks //////////////////////////////
+		for j := 0; j < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; {
+			select {
+			case objStatus := <-pSelf.objMapDataSeq[objRes.TYPE].ResFileChannel:
+				if objStatus.Status == ST_Error {
+					log.Println("[ERROR] FileSyncClient.DownloadResources() : error in downloading resource : ", objRes.TYPE, i)
+					log.Println("[ERROR] FileSyncClient.DownloadResources() : ----------------- Mission Terminated!!! ------------------")
+					os.Exit(-100)
+				}
+
+				if objStatus.Status == ST_Completed {
+					go pSelf.ExtractResData(sTargetFolder, objStatus)
+				}
+			default:
+				if (len(pSelf.objMapDataSeq[objRes.TYPE].TaskChannel) + len(pSelf.objMapDataSeq[objRes.TYPE].ResFileChannel)) == 0 {
+					j = pSelf.TTL + 10
+				}
+				time.Sleep(1 * time.Second)
+			}
+
+			if (i + 1) < len(lstDownloadTask) {
+				break
+			}
+		}
 	}
+
+	log.Printf("[INF] FileSyncClient.DownloadResources() : [Release Downloader] %s : TaskCount = %d", sDataType, len(lstDownloadTask))
 }
 
 ///////////////////////////////////// [InnerMethod]
@@ -208,41 +213,37 @@ type DownloadStatus struct {
 	SeqNo     int            // Sequence No
 }
 
-func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int) bool {
+func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int, objTaskChannel chan int) bool {
 	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
 
 	defer func() bool {
-		if nTaskStatus == ST_Completed {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Downloaded] %s(%d) --> %s (Running:%d, Extract:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel), pSelf.nExtractThreadCount)
-		} else if nTaskStatus == ST_Ignore {
-			log.Printf("[INF] FileSyncClient.fetchResource() : [Ignored] %s(%d) --> %s (Running:%d, Extract:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel), pSelf.nExtractThreadCount)
-		} else if nTaskStatus == ST_Error {
-			log.Printf("[WARN] FileSyncClient.fetchResource() : [Exception] %s(%d) Deleting File : --> %s (Running:%d, Extract:%d)", sDataType, nSeqNo, sUri, len(pSelf.objTaskChannel), pSelf.nExtractThreadCount)
-			os.Remove(sLocalPath)
-		}
-
-		bLoop := true
-		for true == bLoop {
+		for bLoop := true; true == bLoop; {
 			pSelf.objSeqLock.Lock()
 			if objDataSeq, ok := pSelf.objMapDataSeq[sDataType]; ok {
-				if (objDataSeq.LastSeqNo + 1) < nSeqNo /*&& true == objDataSeq.UncompressFlag*/ {
+				if (objDataSeq.LastSeqNo + 1) < nSeqNo {
 					time.Sleep(time.Second)
 				} else {
 					bLoop = false
 					objDataSeq.LastSeqNo = nSeqNo
 					objDataSeq.UncompressFlag = true
+					if nTaskStatus == ST_Completed {
+						log.Printf("[INF] FileSyncClient.fetchResource() : [√] %s=%d => %s (Running:%d)", sDataType, nSeqNo, sUri, len(objTaskChannel))
+					} else if nTaskStatus == ST_Ignore {
+						log.Printf("[INF] FileSyncClient.fetchResource() : [Ignore] %s=%d => %s (Running:%d)", sDataType, nSeqNo, sUri, len(objTaskChannel))
+					} else if nTaskStatus == ST_Error {
+						log.Printf("[WARN] FileSyncClient.fetchResource() : [×] %s=%d Deleting File: => %s (Running:%d)", sDataType, nSeqNo, sUri, len(objTaskChannel))
+						os.Remove(sLocalPath)
+					}
 					pSelf.objMapDataSeq[sDataType] = objDataSeq
 				}
 			}
 			pSelf.objSeqLock.Unlock()
 		}
 
-		pSelf.nDownloadThreadCount--
-		<-pSelf.objTaskChannel
-		pSelf.objResChannel <- DownloadStatus{DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
-
+		<-pSelf.objMapDataSeq[sDataType].TaskChannel
+		pSelf.objMapDataSeq[sDataType].ResFileChannel <- DownloadStatus{DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
 		return true
 	}()
 
