@@ -44,7 +44,7 @@ func (pSelf *CompressHandles) OpenFile(sFilePath string) bool {
 		return false
 	}
 
-	pSelf.GZipWriter, err = gzip.NewWriterLevel(pSelf.TarFile, gzip.BestCompression)
+	pSelf.GZipWriter, err = gzip.NewWriterLevel(pSelf.TarFile /*gzip.DefaultCompression*/, gzip.BestCompression)
 	if err != nil {
 		log.Println("[ERR] CompressHandles.OpenFile() : failed 2 create *tar.Writer :", sFilePath, err.Error())
 		return false
