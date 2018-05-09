@@ -528,6 +528,38 @@ type Day1RecordIO struct {
 	BaseRecordIO
 }
 
+func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
+	var sFile string = ""
+	var objToday time.Time = time.Now()
+
+	objRecordDate := time.Date(nDate/10000, time.Month(nDate%10000/100), nDate%100, 21, 6, 9, 0, time.Local)
+	subHours := objToday.Sub(objRecordDate)
+	nDays := subHours.Hours() / 24
+
+	if nDays <= 16 { ////// Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
+	} else { ////////////////////////// Not Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/10000*10000)
+	}
+
+	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
+		return objHandles.TarWriter
+	} else {
+		var objCompressHandles CompressHandles
+
+		if true == objCompressHandles.OpenFile(sFile) {
+			pSelf.mapFileHandle[sFile] = objCompressHandles
+
+			return pSelf.mapFileHandle[sFile].TarWriter
+		} else {
+			log.Println("[ERR] Day1RecordIO.GrapWriter() : failed 2 open *tar.Writer :", sFilePath)
+		}
+
+	}
+
+	return nil
+}
+
 func (pSelf *Day1RecordIO) CodeInWhiteTable(sFileName string) bool {
 	if pSelf.CodeRangeFilter == nil {
 		return true

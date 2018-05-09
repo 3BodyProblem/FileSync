@@ -132,27 +132,24 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 }
 
 func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo DownloadStatus) {
-	var nCount int = 0
-	var objUnzip Uncompress = Uncompress{TargetFolder: sTargetFolder}
-
-	if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
-		os.Remove(objResInfo.LocalPath)
-		log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.URI)
-		os.Exit(-100)
-		return
-	}
-
 	for bLoop := true; true == bLoop; {
 		pSelf.objSeqLock.Lock()
 		if objDataSeq, ok := pSelf.objMapDataSeq[objResInfo.DataType]; ok {
-			nCount = objDataSeq.NoCount
 			if (objDataSeq.LastSeqNo + 1) < objResInfo.SeqNo {
 				time.Sleep(time.Second)
 			} else {
 				bLoop = false
+				objUnzip := Uncompress{TargetFolder: sTargetFolder}
+				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
+					os.Remove(objResInfo.LocalPath)
+					log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.URI)
+					os.Exit(-100)
+					return
+				}
+
 				objDataSeq.UncompressFlag = false
 				objDataSeq.LastSeqNo = objResInfo.SeqNo
-				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, nCount, objResInfo.URI)
+				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.URI)
 				pSelf.objMapDataSeq[objResInfo.DataType] = objDataSeq
 			}
 		}
@@ -168,7 +165,7 @@ func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder s
 		if _, ok := pSelf.objMapDataSeq[objRes.TYPE]; ok {
 		} else {
 			pSelf.objSeqLock.Lock()
-			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), TaskChannel: make(chan int, 3), ResFileChannel: make(chan DownloadStatus, 16), NoCount: len(lstDownloadTask), UnusedFlag: true, UncompressFlag: true}
+			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), TaskChannel: make(chan int, 3), ResFileChannel: make(chan DownloadStatus, 6), NoCount: len(lstDownloadTask), UnusedFlag: true, UncompressFlag: true}
 			pSelf.objSeqLock.Unlock()
 		}
 
