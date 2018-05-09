@@ -150,12 +150,12 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 					return
 				}
 
-				objDataSeq.UncompressFlag = false
-				objDataSeq.LastSeqNo = objResInfo.SeqNo
 				pSelf.dumpProgress(1)
-				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.URI)
+				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d-->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.URI)
 
 				pSelf.objSeqLock.Lock()
+				objDataSeq.LastSeqNo = objResInfo.SeqNo
+				objDataSeq.UncompressFlag = false
 				pSelf.objMapDataSeq[objResInfo.DataType] = objDataSeq
 				pSelf.objSeqLock.Unlock()
 			}
@@ -243,18 +243,17 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 					time.Sleep(time.Second)
 				} else {
 					bLoop = false
-					objDataSeq.LastSeqNo = nSeqNo
-					objDataSeq.UncompressFlag = true
 					if nTaskStatus == ST_Completed {
-						log.Printf("[INF] FileSyncClient.fetchResource() : [√] %s=%d => %s (Running:%d)", sDataType, nSeqNo, sUri, len(objTaskChannel))
+						log.Printf("[INF] FileSyncClient.fetchResource() : [√] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
 					} else if nTaskStatus == ST_Ignore {
-						log.Printf("[INF] FileSyncClient.fetchResource() : [Ignore] %s=%d => %s (Running:%d)", sDataType, nSeqNo, sUri, len(objTaskChannel))
+						log.Printf("[INF] FileSyncClient.fetchResource() : [Ignore] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
 					} else if nTaskStatus == ST_Error {
-						log.Printf("[WARN] FileSyncClient.fetchResource() : [×] %s=%d Deleting File: => %s (Running:%d)", sDataType, nSeqNo, sUri, len(objTaskChannel))
+						log.Printf("[WARN] FileSyncClient.fetchResource() : [×] %s:%d->%d Deleting File: => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
 						os.Remove(sLocalPath)
 					}
 
 					pSelf.objSeqLock.Lock()
+					objDataSeq.UncompressFlag = true
 					pSelf.objMapDataSeq[sDataType] = objDataSeq
 					pSelf.objSeqLock.Unlock()
 				}
