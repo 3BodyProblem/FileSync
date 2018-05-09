@@ -135,10 +135,13 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 	for bLoop := true; true == bLoop; {
 		pSelf.objSeqLock.Lock()
 		if objDataSeq, ok := pSelf.objMapDataSeq[objResInfo.DataType]; ok {
+			pSelf.objSeqLock.Unlock()
+
 			if (objDataSeq.LastSeqNo + 1) < objResInfo.SeqNo {
 				time.Sleep(time.Second)
 			} else {
 				bLoop = false
+				///////////// Uncompress Resource File ///////////////////////////
 				objUnzip := Uncompress{TargetFolder: sTargetFolder}
 				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
 					os.Remove(objResInfo.LocalPath)
@@ -149,32 +152,42 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 
 				objDataSeq.UncompressFlag = false
 				objDataSeq.LastSeqNo = objResInfo.SeqNo
+				pSelf.dumpProgress(1)
 				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.URI)
+
+				pSelf.objSeqLock.Lock()
 				pSelf.objMapDataSeq[objResInfo.DataType] = objDataSeq
+				pSelf.objSeqLock.Unlock()
 			}
+
+			continue
 		}
+
 		pSelf.objSeqLock.Unlock()
 	}
-
-	pSelf.dumpProgress(1)
 }
 
 func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
+	var refTaskChannel chan int
+	var refResFileChannel chan DownloadStatus
+
 	for i, objRes := range lstDownloadTask {
 		/////////////////////////////// Arouse Downloading Tasks ////////////////////////////
+		pSelf.objSeqLock.Lock() // Lock
 		if _, ok := pSelf.objMapDataSeq[objRes.TYPE]; ok {
 		} else {
-			pSelf.objSeqLock.Lock()
 			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), TaskChannel: make(chan int, 3), ResFileChannel: make(chan DownloadStatus, 6), NoCount: len(lstDownloadTask), UnusedFlag: true, UncompressFlag: true}
-			pSelf.objSeqLock.Unlock()
 		}
+		refTaskChannel = pSelf.objMapDataSeq[objRes.TYPE].TaskChannel
+		refResFileChannel = pSelf.objMapDataSeq[objRes.TYPE].ResFileChannel
+		pSelf.objSeqLock.Unlock() // Unlock
 
-		pSelf.objMapDataSeq[objRes.TYPE].TaskChannel <- i // WAIT 2 Engage 1 Channel Resource
-		go pSelf.fetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i, pSelf.objMapDataSeq[objRes.TYPE].TaskChannel)
+		refTaskChannel <- i // WAIT 2 Engage 1 Channel Resource
+		go pSelf.fetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i, refTaskChannel)
 		///////////////////////////// Check Extraction Tasks //////////////////////////////
 		for j := 0; j < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; {
 			select {
-			case objStatus := <-pSelf.objMapDataSeq[objRes.TYPE].ResFileChannel:
+			case objStatus := <-refResFileChannel:
 				if objStatus.Status == ST_Error {
 					log.Println("[ERROR] FileSyncClient.DownloadResources() : error in downloading resource : ", objRes.TYPE, i)
 					log.Println("[ERROR] FileSyncClient.DownloadResources() : ----------------- Mission Terminated!!! ------------------")
@@ -185,7 +198,7 @@ func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder s
 					go pSelf.ExtractResData(sTargetFolder, objStatus)
 				}
 			default:
-				if (len(pSelf.objMapDataSeq[objRes.TYPE].TaskChannel) + len(pSelf.objMapDataSeq[objRes.TYPE].ResFileChannel)) == 0 {
+				if (len(refTaskChannel) + len(refResFileChannel)) == 0 {
 					j = pSelf.TTL + 10
 				}
 				time.Sleep(1 * time.Second)
@@ -216,9 +229,16 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
 
 	defer func() bool {
+		var refTaskChannel chan int
+		var refResFileChannel chan DownloadStatus
+
 		for bLoop := true; true == bLoop; {
 			pSelf.objSeqLock.Lock()
 			if objDataSeq, ok := pSelf.objMapDataSeq[sDataType]; ok {
+				refTaskChannel = pSelf.objMapDataSeq[sDataType].TaskChannel
+				refResFileChannel = pSelf.objMapDataSeq[sDataType].ResFileChannel
+				pSelf.objSeqLock.Unlock()
+
 				if (objDataSeq.LastSeqNo + 1) < nSeqNo {
 					time.Sleep(time.Second)
 				} else {
@@ -233,14 +253,20 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 						log.Printf("[WARN] FileSyncClient.fetchResource() : [×] %s=%d Deleting File: => %s (Running:%d)", sDataType, nSeqNo, sUri, len(objTaskChannel))
 						os.Remove(sLocalPath)
 					}
+
+					pSelf.objSeqLock.Lock()
 					pSelf.objMapDataSeq[sDataType] = objDataSeq
+					pSelf.objSeqLock.Unlock()
 				}
+
+				continue
 			}
+
 			pSelf.objSeqLock.Unlock()
 		}
 
-		<-pSelf.objMapDataSeq[sDataType].TaskChannel
-		pSelf.objMapDataSeq[sDataType].ResFileChannel <- DownloadStatus{DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
+		<-refTaskChannel
+		refResFileChannel <- DownloadStatus{DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
 		return true
 	}()
 
