@@ -163,7 +163,7 @@ func (pSelf *FileScheduler) Active() bool {
 
 			objSetting.Value = strings.Replace(objSetting.Value, "\\", "/", -1)
 			pSelf.DataSourceConfig[sResType] = DataSourceConfig{MkID: strings.ToLower(strings.Split(objSetting.Name, ".")[0]), Folder: objSetting.Value}
-			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] ", sResType, pSelf.DataSourceConfig[sResType].MkID, pSelf.DataSourceConfig[sResType].Folder)
+			log.Println("[INF] FileScheduler.Active() : [Xml.Setting]", sResType, pSelf.DataSourceConfig[sResType].MkID, pSelf.DataSourceConfig[sResType].Folder)
 		}
 	}
 
