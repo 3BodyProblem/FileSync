@@ -29,6 +29,15 @@ type Uncompress struct {
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
 func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
+	var objMapFile map[string]*os.File = make(map[string]*os.File, 1024*8)
+	var objMapFolder map[string]bool = make(map[string]bool, 1024*8)
+	/*
+		defer func() {
+			for _, objFile := range objMapFile {
+				objFile.Close()
+			}
+		}()
+	*/
 	// open zip file
 	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
 	if "windows" == runtime.GOOS {
@@ -61,7 +70,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		// Check if it is diretory or file
 		if hdr.Typeflag != tar.TypeDir {
 			// Get files from archive
-			// Create diretory before create file
+			//////////////////////////// Create Folder ////////////////////////////////
 			sTargetFile := filepath.Join(sLocalFolder, hdr.Name)
 			_, sSplitFileName := path.Split(sTargetFile)
 			if strings.Contains(sSplitFileName, ".") == false {
@@ -71,30 +80,43 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			if "windows" == runtime.GOOS {
 				sTargetFolder = sTargetFile[:strings.LastIndex(sTargetFile, "\\")+1]
 			}
-			err = os.MkdirAll(sTargetFolder, 0755)
-			if err != nil {
-				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 tar file, folder: ", sTargetFolder, sLocalFolder, err.Error())
-				return false
+
+			if _, ok := objMapFolder[sTargetFolder]; ok {
+			} else {
+				err = os.MkdirAll(sTargetFolder, 0755)
+				if err != nil {
+					log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot build target folder 4 tar file, folder: ", sTargetFolder, sLocalFolder, err.Error())
+					return false
+				}
+				objMapFolder[sTargetFolder] = true
 			}
 
-			// Write data to file
-			sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
+			///////////////////////// Open File ///////////////////////////////////////
 			fw, err := os.OpenFile(sTargetFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, sLocalFolder, err.Error())
 				return false
 			}
-			defer fw.Close()
-
-			nFileSize, _ := fw.Seek(0, os.SEEK_END)
-			if strings.LastIndex(sTargetFile, "/MIN/") > 0 && nFileSize == 0 {
-				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
-			}
-			if strings.LastIndex(sTargetFile, "/MIN5/") > 0 && nFileSize == 0 {
-				fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
-			}
-			if strings.LastIndex(sTargetFile, "/DAY/") > 0 && nFileSize == 0 {
-				fw.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+			///////////////////////// Write data to file ///////////////////////////////
+			sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
+			//var fw *os.File = nil
+			if _, ok := objMapFile[sTargetFile]; ok {
+			} else {
+				objMapFile[sTargetFile] = fw // Assign 2 Map
+				/////////////////// Check Title In File ///////////////////////
+				nFileSize, _ := fw.Seek(0, os.SEEK_END)
+				if strings.LastIndex(sTargetFile, "/MIN/") > 0 && nFileSize == 0 {
+					fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				}
+				if strings.LastIndex(sTargetFile, "/MIN5/") > 0 && nFileSize == 0 {
+					fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				}
+				if strings.LastIndex(sTargetFile, "/MIN60/") > 0 && nFileSize == 0 {
+					fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				}
+				if strings.LastIndex(sTargetFile, "/DAY/") > 0 && nFileSize == 0 {
+					fw.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				}
 			}
 
 			_, err = io.Copy(fw, objTarReader)
@@ -103,6 +125,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 				fw.Close()
 				return false
 			}
+
 			fw.Close()
 		}
 	}
