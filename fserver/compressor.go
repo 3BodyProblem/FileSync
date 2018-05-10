@@ -343,7 +343,7 @@ func (pSelf *Minutes60RecordIO) CodeInWhiteTable(sFileName string) bool {
 		log.Println("[ERR] Minutes1RecordIO.CodeInWhiteTable() : Year In FileName is not digital: ", sFileName, nFileYear)
 		return false
 	}
-	if time.Now().Year()-nFileYear >= 2 {
+	if time.Now().Year()-nFileYear >= 4 {
 		return false
 	}
 	nBegin := strings.LastIndexAny(sFileName, "MIN")
