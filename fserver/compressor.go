@@ -35,7 +35,7 @@ type CompressHandles struct {
 	TarWriter  *tar.Writer  // tar.Writer handle
 }
 
-func (pSelf *CompressHandles) OpenFile(sFilePath string) bool {
+func (pSelf *CompressHandles) OpenFile(sFilePath string, nGZipCompressLevel int) bool {
 	var err error
 
 	pSelf.TarFile, err = os.Create(sFilePath)
@@ -44,7 +44,7 @@ func (pSelf *CompressHandles) OpenFile(sFilePath string) bool {
 		return false
 	}
 
-	pSelf.GZipWriter, err = gzip.NewWriterLevel(pSelf.TarFile /*gzip.DefaultCompression*/, gzip.BestCompression)
+	pSelf.GZipWriter, err = gzip.NewWriterLevel(pSelf.TarFile, nGZipCompressLevel)
 	if err != nil {
 		log.Println("[ERR] CompressHandles.OpenFile() : failed 2 create *tar.Writer :", sFilePath, err.Error())
 		return false
@@ -80,12 +80,17 @@ type I_Record_IO interface {
 	CodeInWhiteTable(sFileName string) bool             // judge whether the file need 2 be loaded
 	GenFilePath(sFileName string) string                // generate name  of file which in .tar
 	GrapWriter(sFilePath string, nDate int) *tar.Writer // grap a .tar writer ptr
+	GetCompressLevel() int                              // get gzip compression level
 }
 
 type BaseRecordIO struct {
 	DataType        string
 	CodeRangeFilter I_Range_OP
 	mapFileHandle   map[string]CompressHandles
+}
+
+func (pSelf *BaseRecordIO) GetCompressLevel() int {
+	return gzip.DefaultCompression
 }
 
 func (pSelf *BaseRecordIO) CodeInWhiteTable(sFileName string) bool {
@@ -160,7 +165,7 @@ func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 	} else {
 		var objCompressHandles CompressHandles
 
-		if true == objCompressHandles.OpenFile(sFile) {
+		if true == objCompressHandles.OpenFile(sFile, pSelf.GetCompressLevel()) {
 			pSelf.mapFileHandle[sFile] = objCompressHandles
 
 			return pSelf.mapFileHandle[sFile].TarWriter
@@ -277,6 +282,9 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 	case (objDataSrc.MkID == "sse" && sDataType == ".m5") || (objDataSrc.MkID == "szse" && sDataType == ".m5"):
 		objRecordIO := Minutes5RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M5 data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN5/MIN5."), objDataSrc.Folder, &objRecordIO)
+	case (objDataSrc.MkID == "sse" && sDataType == ".m60") || (objDataSrc.MkID == "szse" && sDataType == ".m60"):
+		objRecordIO := Minutes60RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M60 data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN60/MIN60."), objDataSrc.Folder, &objRecordIO)
 	default:
 		log.Printf("[ERR] Compressor.XCompress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
 		return lstRes, false
@@ -317,6 +325,146 @@ func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader 
 	}
 
 	return pILoader.Release(), true
+}
+
+///////////////////////// 60Minutes Lines ///////////////////////////////////////////
+type Minutes60RecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *Minutes60RecordIO) CodeInWhiteTable(sFileName string) bool {
+	if pSelf.CodeRangeFilter == nil {
+		return true
+	}
+
+	nEnd := strings.LastIndexAny(sFileName, ".")
+	nFileYear, err := strconv.Atoi(sFileName[nEnd-4 : nEnd])
+	if nil != err {
+		log.Println("[ERR] Minutes1RecordIO.CodeInWhiteTable() : Year In FileName is not digital: ", sFileName, nFileYear)
+		return false
+	}
+	if time.Now().Year()-nFileYear >= 2 {
+		return false
+	}
+	nBegin := strings.LastIndexAny(sFileName, "MIN")
+	nEnd = nEnd - 5
+	sCodeNum := sFileName[nBegin+1 : nEnd]
+
+	return pSelf.CodeRangeFilter.CodeInRange(sCodeNum)
+}
+
+func (pSelf *Minutes60RecordIO) GenFilePath(sFileName string) string {
+	return strings.Replace(sFileName, "MIN/", "MIN60/", -1)
+}
+
+func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	var err error
+	var nOffset int = 0
+	var bLine []byte
+	var i int = 0
+	var nReturnDate int = -100
+	var objToday time.Time = time.Now()
+	var rstr string = ""
+	var objMin60 struct {
+		Date         int     // date
+		Time         int     // time
+		Open         float64 // open price
+		High         float64 // high price
+		Low          float64 // low price
+		Close        float64 // close price
+		Settle       float64 // settle price
+		Amount       float64 // Amount
+		Volume       int64   // Volume
+		OpenInterest int64   // Open Interest
+		NumTrades    int64   // Trade Number
+		Voip         float64 // Voip
+	} // 60 minutes k-line
+
+	bLines := bytes.Split(bytesData, []byte("\n"))
+	nCount := len(bLines)
+	for i, bLine = range bLines {
+		nOffset += (len(bLine) + 1)
+		lstRecords := strings.Split(string(bLine), ",")
+		if len(lstRecords[0]) <= 0 {
+			continue
+		}
+		objMin60.Date, err = strconv.Atoi(lstRecords[0])
+		if err != nil {
+			continue
+		}
+
+		objRecordDate := time.Date(objMin60.Date/10000, time.Month(objMin60.Date%10000/100), objMin60.Date%100, 21, 6, 9, 0, time.Local)
+		subHours := objToday.Sub(objRecordDate)
+		nDays := subHours.Hours() / 24
+		if nDays > 366 {
+			continue
+		}
+
+		if -100 == nReturnDate {
+			nReturnDate = objMin60.Date
+		}
+
+		if nReturnDate != objMin60.Date {
+			return []byte(rstr), nReturnDate, nOffset
+		}
+
+		// cal. 60 minutes k-lines
+		nCurTime, _ := strconv.Atoi(lstRecords[1])
+		nCurTime /= 10000000
+		objMin60.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
+		objMin60.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
+		objMin60.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
+
+		if objMin60.Time == 0 {
+			objMin60.Time = (nCurTime + 1) * 10000
+			objMin60.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
+			objMin60.High, _ = strconv.ParseFloat(lstRecords[3], 64)
+			objMin60.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
+			objMin60.Amount, _ = strconv.ParseFloat(lstRecords[7], 64)
+			objMin60.Volume, _ = strconv.ParseInt(lstRecords[8], 10, 64)
+			objMin60.OpenInterest, _ = strconv.ParseInt(lstRecords[9], 10, 64)
+			objMin60.NumTrades, _ = strconv.ParseInt(lstRecords[10], 10, 64)
+			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+		}
+
+		if objMin60.Time <= nCurTime*10000 { // begin
+			//if 0 != i {
+			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+			//}
+
+			objMin60.Time = (nCurTime + 1) * 10000
+			objMin60.Open, _ = strconv.ParseFloat(lstRecords[2], 64)
+			objMin60.High, _ = strconv.ParseFloat(lstRecords[3], 64)
+			objMin60.Low, _ = strconv.ParseFloat(lstRecords[4], 64)
+			objMin60.Amount, _ = strconv.ParseFloat(lstRecords[7], 64)
+			objMin60.Volume, _ = strconv.ParseInt(lstRecords[8], 10, 64)
+			objMin60.OpenInterest, _ = strconv.ParseInt(lstRecords[9], 10, 64)
+			objMin60.NumTrades, _ = strconv.ParseInt(lstRecords[10], 10, 64)
+		} else {
+			nHigh, _ := strconv.ParseFloat(lstRecords[3], 64)
+			nLow, _ := strconv.ParseFloat(lstRecords[4], 64)
+			if nHigh > objMin60.High {
+				objMin60.High = nHigh
+			}
+			if nLow > objMin60.Low {
+				objMin60.Low = nLow
+			}
+			nAmount, _ := strconv.ParseFloat(lstRecords[7], 64)
+			objMin60.Amount += nAmount
+			nVolume, _ := strconv.ParseInt(lstRecords[8], 10, 64)
+			objMin60.Volume += nVolume
+			nOpenInterest, _ := strconv.ParseInt(lstRecords[9], 10, 64)
+			objMin60.OpenInterest += nOpenInterest
+			nNumTrades, _ := strconv.ParseInt(lstRecords[10], 10, 64)
+			objMin60.NumTrades += nNumTrades
+		}
+
+		if i == (nCount - 1) {
+			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+		}
+	}
+
+	return []byte(rstr), nReturnDate, len(bytesData)
 }
 
 ///////////////////////// 5Minutes Lines ///////////////////////////////////////////
@@ -528,6 +676,10 @@ type Day1RecordIO struct {
 	BaseRecordIO
 }
 
+func (pSelf *Day1RecordIO) GetCompressLevel() int {
+	return gzip.BestSpeed
+}
+
 func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 	var sFile string = ""
 	var objToday time.Time = time.Now()
@@ -547,7 +699,7 @@ func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
 	} else {
 		var objCompressHandles CompressHandles
 
-		if true == objCompressHandles.OpenFile(sFile) {
+		if true == objCompressHandles.OpenFile(sFile, pSelf.GetCompressLevel()) {
 			pSelf.mapFileHandle[sFile] = objCompressHandles
 
 			return pSelf.mapFileHandle[sFile].TarWriter
