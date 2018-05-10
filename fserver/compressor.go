@@ -8,7 +8,7 @@ package fserver
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
+	"compress/zlib"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -31,7 +31,7 @@ func init() {
 ///////////////////////////////////// Data Record IO Wrapper ///////////////////////////////////////////
 type CompressHandles struct {
 	TarFile    *os.File     // .tar file handle
-	GZipWriter *gzip.Writer // gzip.Writer handle
+	GZipWriter *zlib.Writer // gzip.Writer handle
 	TarWriter  *tar.Writer  // tar.Writer handle
 }
 
@@ -44,7 +44,7 @@ func (pSelf *CompressHandles) OpenFile(sFilePath string, nGZipCompressLevel int)
 		return false
 	}
 
-	pSelf.GZipWriter, err = gzip.NewWriterLevel(pSelf.TarFile, nGZipCompressLevel)
+	pSelf.GZipWriter, err = zlib.NewWriterLevel(pSelf.TarFile, nGZipCompressLevel)
 	if err != nil {
 		log.Println("[ERR] CompressHandles.OpenFile() : failed 2 create *tar.Writer :", sFilePath, err.Error())
 		return false
@@ -90,7 +90,7 @@ type BaseRecordIO struct {
 }
 
 func (pSelf *BaseRecordIO) GetCompressLevel() int {
-	return gzip.DefaultCompression
+	return zlib.DefaultCompression
 }
 
 func (pSelf *BaseRecordIO) CodeInWhiteTable(sFileName string) bool {
@@ -677,7 +677,7 @@ type Day1RecordIO struct {
 }
 
 func (pSelf *Day1RecordIO) GetCompressLevel() int {
-	return gzip.BestSpeed
+	return zlib.BestSpeed
 }
 
 func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {

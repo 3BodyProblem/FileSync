@@ -7,7 +7,8 @@ package fclient
 
 import (
 	"archive/tar"
-	"compress/gzip"
+	//"compress/gzip"
+	"compress/zlib"
 	"io"
 	"log"
 	"os"
@@ -29,17 +30,10 @@ type Uncompress struct {
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
 func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
-	var objMapFile map[string]*os.File = make(map[string]*os.File, 1024*8)
+	var objMapFile map[string]bool = make(map[string]bool, 1024*8)
 	var objMapFolder map[string]bool = make(map[string]bool, 1024*8)
-	/*
-		defer func() {
-			for _, objFile := range objMapFile {
-				objFile.Close()
-			}
-		}()
-	*/
+	var sLocalFolder string = path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
 	// open zip file
-	sLocalFolder := path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
 	if "windows" == runtime.GOOS {
 		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
 	}
@@ -52,7 +46,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		return false
 	}
 
-	objGzipReader, err := gzip.NewReader(objZipReader)
+	objGzipReader, err := zlib.NewReader(objZipReader) // gzip.NewReader(objZipReader)
 	if err != nil {
 		log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot open gzip reader :", sZipSrcPath, err.Error())
 		return false
@@ -99,10 +93,9 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			}
 			///////////////////////// Write data to file ///////////////////////////////
 			sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
-			//var fw *os.File = nil
 			if _, ok := objMapFile[sTargetFile]; ok {
 			} else {
-				objMapFile[sTargetFile] = fw // Assign 2 Map
+				objMapFile[sTargetFile] = true // Assign 2 Map
 				/////////////////// Check Title In File ///////////////////////
 				nFileSize, _ := fw.Seek(0, os.SEEK_END)
 				if strings.LastIndex(sTargetFile, "/MIN/") > 0 && nFileSize == 0 {
