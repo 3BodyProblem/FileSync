@@ -170,13 +170,18 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
 	var refTaskChannel chan int
 	var refResFileChannel chan DownloadStatus
+	var nMaxDownloadThread int = 3
+
+	if len(lstDownloadTask) > 20 {
+		nMaxDownloadThread = nMaxDownloadThread * 2
+	}
 
 	for i, objRes := range lstDownloadTask {
 		/////////////////////////////// Arouse Downloading Tasks ////////////////////////////
 		pSelf.objSeqLock.Lock() // Lock
 		if _, ok := pSelf.objMapDataSeq[objRes.TYPE]; ok {
 		} else {
-			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), TaskChannel: make(chan int, 3), ResFileChannel: make(chan DownloadStatus, 6), NoCount: len(lstDownloadTask), UnusedFlag: true, UncompressFlag: true}
+			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), TaskChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, 6), NoCount: len(lstDownloadTask), UnusedFlag: true, UncompressFlag: true}
 		}
 		refTaskChannel = pSelf.objMapDataSeq[objRes.TYPE].TaskChannel
 		refResFileChannel = pSelf.objMapDataSeq[objRes.TYPE].ResFileChannel
