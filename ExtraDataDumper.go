@@ -96,14 +96,14 @@ func main() {
 		fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
 			log.Println("[ERR] cannot create file, file name =", sLocalFile, err.Error())
-			return err
+			os.Exit(-100)
 		}
 
 		_, err = io.Copy(fw, r)
 		if err != nil {
 			log.Println("[ERR] cannot write 2 file, file name =", sLocalFile, err.Error())
 			fw.Close()
-			return err
+			os.Exit(-100)
 		}
 
 		fw.Close()
@@ -126,14 +126,14 @@ func main() {
 			fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("[ERR] cannot create file, file name =", sLocalFile, err.Error())
-				return err
+				os.Exit(-100)
 			}
 
 			_, err = io.Copy(fw, r)
 			if err != nil {
 				log.Println("[ERR] cannot write 2 file, file name =", sLocalFile, err.Error())
 				fw.Close()
-				return err
+				os.Exit(-100)
 			}
 
 			fw.Close()
@@ -160,14 +160,14 @@ func main() {
 			fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("[ERR] cannot create file, file name =", sLocalFile, err.Error())
-				return err
+				os.Exit(-100)
 			}
 
 			_, err = io.Copy(fw, r)
 			if err != nil {
 				log.Println("[ERR] cannot write 2 file, file name =", sLocalFile, err.Error())
 				fw.Close()
-				return err
+				os.Exit(-100)
 			}
 
 			fw.Close()
@@ -194,14 +194,14 @@ func main() {
 			fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("[ERR] cannot create file, file name =", sLocalFile, err.Error())
-				return err
+				os.Exit(-100)
 			}
 
 			_, err = io.Copy(fw, r)
 			if err != nil {
 				log.Println("[ERR] cannot write 2 file, file name =", sLocalFile, err.Error())
 				fw.Close()
-				return err
+				os.Exit(-100)
 			}
 
 			fw.Close()
@@ -228,14 +228,14 @@ func main() {
 			fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("[ERR] cannot create file, file name =", sLocalFile, err.Error())
-				return err
+				os.Exit(-100)
 			}
 
 			_, err = io.Copy(fw, r)
 			if err != nil {
 				log.Println("[ERR] cannot write 2 file, file name =", sLocalFile, err.Error())
 				fw.Close()
-				return err
+				os.Exit(-100)
 			}
 
 			fw.Close()
