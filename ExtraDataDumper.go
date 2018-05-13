@@ -71,9 +71,11 @@ func main() {
 	/////////////// Username / password authentication ////////////////////////////
 	if err = ftp.Login(sAccount, sPassword); err != nil {
 		log.Println("[ERR] invalid username or password :", err.Error())
+		return
 	}
 	if err = ftp.Cwd("/"); err != nil {
-		log.Println("[ERR] cannot walk 2 root folder :", err.Error())
+		log.Println("[ERR] cannot walk 2 root folder of FTP Server :", err.Error())
+		return
 	}
 	err = os.MkdirAll(sTmpFolder, 0755)
 	if err != nil {
