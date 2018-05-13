@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -55,6 +56,11 @@ func main() {
 
 		log.SetOutput(oLogFile)
 	}
+
+	sTmpFolder = strings.Replace(sTmpFolder, "\\", "/", -1)
+	sTmpFolder := sTmpFolder[:strings.LastIndex(sTmpFolder, "/")]
+	sTmpFolder = fmt.Sprintf("%s.%d", sTmpFolder, time.Now().Unix())
+	sTmpFolder += "/"
 	log.Println("[INF] [Ver] ######### 1.0.1 ####################")
 	log.Println("[INF] [Begin] ##################################")
 	/////////////// Ftp ///////////////////////////////////////////////////////////
@@ -77,11 +83,13 @@ func main() {
 		log.Println("[ERR] cannot walk 2 root folder of FTP Server :", err.Error())
 		return
 	}
+	log.Println("[INF] Root -->", sTmpFolder)
 	err = os.MkdirAll(sTmpFolder, 0755)
 	if err != nil {
 		log.Println("[ERR] cannot build root folder : ", sTmpFolder, err.Error())
 		return
 	}
+
 	/////////////// Download ./Participant.txt ////////////////////////////////////
 	_, err = ftp.Retr("./Participant.txt", func(r io.Reader) error {
 		sLocalFile := filepath.Join(sTmpFolder, "Participant.txt")
@@ -238,5 +246,13 @@ func main() {
 		return nil
 	})
 	log.Println("[INF] [Done] Ftp File : ./shsz_detail/")
+
+	os.RemoveAll("./HKSE")
+	err = os.Rename(sTmpFolder, "./HKSE/")
+	if err != nil {
+		log.Println("[ERR] cannot remove folder, folder name =", sTmpFolder, err.Error())
+		return
+	}
+
 	log.Println("[INF] [ End ] ##################################")
 }
