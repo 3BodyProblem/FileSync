@@ -76,11 +76,11 @@ func (pSelf *CompressHandles) CloseFile() {
 type I_Record_IO interface {
 	Initialize() bool
 	Release() []ResDownload
-	LoadFromFile(bytesData []byte) ([]byte, int, int)   // load data from file, return [] byte (return nil means end of file)
-	CodeInWhiteTable(sFileName string) bool             // judge whether the file need 2 be loaded
-	GenFilePath(sFileName string) string                // generate name  of file which in .tar
-	GrapWriter(sFilePath string, nDate int) *tar.Writer // grap a .tar writer ptr
-	GetCompressLevel() int                              // get gzip compression level
+	LoadFromFile(bytesData []byte) ([]byte, int, int)                    // load data from file, return [] byte (return nil means end of file)
+	CodeInWhiteTable(sFileName string) bool                              // judge whether the file need 2 be loaded
+	GenFilePath(sFileName string) string                                 // generate name  of file which in .tar
+	GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer // grap a .tar writer ptr
+	GetCompressLevel() int                                               // get gzip compression level
 }
 
 type BaseRecordIO struct {
@@ -140,7 +140,7 @@ func (pSelf *BaseRecordIO) GenFilePath(sFileName string) string {
 	return sFileName
 }
 
-func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
+func (pSelf *BaseRecordIO) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
 	var sFile string = ""
 	var objToday time.Time = time.Now()
 
@@ -188,6 +188,7 @@ type Compressor struct {
 func (pSelf *Compressor) compressFolder(sDestFile string, sSrcFolder string, sRecursivePath string, pILoader I_Record_IO) bool {
 	oDirFile, err := os.Open(sSrcFolder) // Open source diretory
 	if err != nil {
+		log.Println("[INF] Compressor.compressFolder() : cannot open source folder :", sSrcFolder, err.Error())
 		return false
 	}
 	defer oDirFile.Close()
@@ -239,7 +240,7 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 			}
 
 			nIndex += nOffset
-			pTarWriter := pILoader.GrapWriter(pILoader.GenFilePath(sDestFile), nDate)
+			pTarWriter := pILoader.GrapWriter(pILoader.GenFilePath(sDestFile), nDate, sSrcFile)
 			if nil == pTarWriter {
 				return false
 			}
@@ -285,6 +286,21 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 	case (objDataSrc.MkID == "sse" && sDataType == ".m60") || (objDataSrc.MkID == "szse" && sDataType == ".m60"):
 		objRecordIO := Minutes60RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M60 data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN60/MIN60."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "hkse" && sDataType == ".participant":
+		objRecordIO := ParticipantRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "Participant."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "hkse" && sDataType == ".shase_rzrq_by_date":
+		objRecordIO := Shase_rzrq_by_date{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "shase_rzrq_by_date/shase_rzrq_by_date."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "hkse" && sDataType == ".sznse_rzrq_by_date":
+		objRecordIO := Sznse_rzrq_by_date{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "sznse_rzrq_by_date/sznse_rzrq_by_date."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "hkse" && sDataType == ".shsz_idx_by_date":
+		objRecordIO := Shsz_idx_by_date{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "shsz_idx_by_date/shsz_idx_by_date."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "hkse" && sDataType == ".shsz_detail":
+		objRecordIO := Shsz_detail{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "shsz_detail/shsz_detail."), objDataSrc.Folder, &objRecordIO)
 	default:
 		log.Printf("[ERR] Compressor.XCompress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
 		return lstRes, false
@@ -301,6 +317,7 @@ func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader 
 		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, pathSep)]
 	}
 	sDestFile = strings.Replace(sDestFile, "\\", "/", -1)
+
 	err := os.MkdirAll(sMkFolder, 0755)
 	if err != nil {
 		log.Println("[ERR] Compressor.translateFolder() : cannot build target folder 4 zip file :", sMkFolder)
@@ -680,7 +697,7 @@ func (pSelf *Day1RecordIO) GetCompressLevel() int {
 	return zlib.BestSpeed
 }
 
-func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int) *tar.Writer {
+func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
 	var sFile string = ""
 	var objToday time.Time = time.Now()
 
@@ -761,4 +778,236 @@ type WeightRecordIO struct {
 
 func (pSelf *WeightRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	return bytesData, 0, len(bytesData)
+}
+
+///////////////////////// Participant Lines ///////////////////////////////////////////
+type ParticipantRecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *ParticipantRecordIO) CodeInWhiteTable(sFileName string) bool {
+	sTmpName := strings.ToLower(sFileName)
+
+	if strings.Contains(sTmpName, "participant.txt") == true {
+		return true
+	}
+
+	return false
+}
+
+func (pSelf *ParticipantRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+///////////////////////// shase_rzrq_by_date Lines ///////////////////////////////////////////
+type Shase_rzrq_by_date struct {
+	BaseRecordIO
+}
+
+func (pSelf *Shase_rzrq_by_date) CodeInWhiteTable(sFileName string) bool {
+	return true
+}
+
+func (pSelf *Shase_rzrq_by_date) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+func (pSelf *Shase_rzrq_by_date) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
+	var err error
+	var sFile string = ""
+	var objToday time.Time = time.Now()
+
+	lstPath := strings.Split(sSrcFile, "/")
+	lstName := strings.Split(lstPath[len(lstPath)-1], ".")
+	nDate, err = strconv.Atoi(lstName[0])
+	if nil != err {
+		log.Println("[ERROR] Shase_rzrq_by_date.GrapWriter() : invalid number string: ", lstName[0], err.Error())
+		return nil
+	}
+
+	objRecordDate := time.Date(nDate/10000, time.Month(nDate%10000/100), nDate%100, 21, 6, 9, 0, time.Local)
+	subHours := objToday.Sub(objRecordDate)
+	nDays := subHours.Hours() / 24
+	if nDays <= 16 { ////// Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
+	} else { ////////////////////////// Not Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/10000*10000)
+	}
+
+	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
+		return objHandles.TarWriter
+	} else {
+		var objCompressHandles CompressHandles
+
+		if true == objCompressHandles.OpenFile(sFile, pSelf.GetCompressLevel()) {
+			pSelf.mapFileHandle[sFile] = objCompressHandles
+
+			return pSelf.mapFileHandle[sFile].TarWriter
+		} else {
+			log.Println("[ERR] Shase_rzrq_by_date.GrapWriter() : failed 2 open *tar.Writer :", sFilePath)
+		}
+
+	}
+
+	return nil
+}
+
+///////////////////////// sznse_rzrq_by_date Lines ///////////////////////////////////////////
+type Sznse_rzrq_by_date struct {
+	BaseRecordIO
+}
+
+func (pSelf *Sznse_rzrq_by_date) CodeInWhiteTable(sFileName string) bool {
+	return true
+}
+
+func (pSelf *Sznse_rzrq_by_date) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+func (pSelf *Sznse_rzrq_by_date) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
+	var err error
+	var sFile string = ""
+	var objToday time.Time = time.Now()
+
+	lstPath := strings.Split(sSrcFile, "/")
+	log.Println(sSrcFile, lstPath[0], lstPath[1])
+	lstName := strings.Split(lstPath[len(lstPath)-1], ".")
+	nDate, err = strconv.Atoi(lstName[0])
+	if nil != err {
+		log.Println("[ERROR] Sznse_rzrq_by_date.GrapWriter() : invalid number string: ", lstName[0], err.Error())
+		return nil
+	}
+
+	objRecordDate := time.Date(nDate/10000, time.Month(nDate%10000/100), nDate%100, 21, 6, 9, 0, time.Local)
+	subHours := objToday.Sub(objRecordDate)
+	nDays := subHours.Hours() / 24
+	if nDays <= 16 { ////// Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
+	} else { ////////////////////////// Not Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/10000*10000)
+	}
+
+	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
+		return objHandles.TarWriter
+	} else {
+		var objCompressHandles CompressHandles
+
+		if true == objCompressHandles.OpenFile(sFile, pSelf.GetCompressLevel()) {
+			pSelf.mapFileHandle[sFile] = objCompressHandles
+
+			return pSelf.mapFileHandle[sFile].TarWriter
+		} else {
+			log.Println("[ERR] Sznse_rzrq_by_date.GrapWriter() : failed 2 open *tar.Writer :", sFilePath)
+		}
+
+	}
+
+	return nil
+}
+
+///////////////////////// shsz_idx_by_date Lines ///////////////////////////////////////////
+type Shsz_idx_by_date struct {
+	BaseRecordIO
+}
+
+func (pSelf *Shsz_idx_by_date) CodeInWhiteTable(sFileName string) bool {
+	return true
+}
+
+func (pSelf *Shsz_idx_by_date) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+func (pSelf *Shsz_idx_by_date) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
+	var err error
+	var sFile string = ""
+	var objToday time.Time = time.Now()
+
+	lstPath := strings.Split(sSrcFile, "/")
+	lstName := strings.Split(lstPath[len(lstPath)-1], ".")
+	nDate, err = strconv.Atoi(lstName[0])
+	if nil != err {
+		log.Println("[ERROR] Shsz_idx_by_date.GrapWriter() : invalid number string: ", lstName[0], err.Error())
+		return nil
+	}
+
+	objRecordDate := time.Date(nDate/10000, time.Month(nDate%10000/100), nDate%100, 21, 6, 9, 0, time.Local)
+	subHours := objToday.Sub(objRecordDate)
+	nDays := subHours.Hours() / 24
+	if nDays <= 16 { ////// Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
+	} else { ////////////////////////// Not Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/10000*10000)
+	}
+
+	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
+		return objHandles.TarWriter
+	} else {
+		var objCompressHandles CompressHandles
+
+		if true == objCompressHandles.OpenFile(sFile, pSelf.GetCompressLevel()) {
+			pSelf.mapFileHandle[sFile] = objCompressHandles
+
+			return pSelf.mapFileHandle[sFile].TarWriter
+		} else {
+			log.Println("[ERR] Shsz_idx_by_date.GrapWriter() : failed 2 open *tar.Writer :", sFilePath)
+		}
+
+	}
+
+	return nil
+}
+
+///////////////////////// shsz_detail Lines ///////////////////////////////////////////
+type Shsz_detail struct {
+	BaseRecordIO
+}
+
+func (pSelf *Shsz_detail) CodeInWhiteTable(sFileName string) bool {
+	return true
+}
+
+func (pSelf *Shsz_detail) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+func (pSelf *Shsz_detail) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
+	var err error
+	var sFile string = ""
+	var objToday time.Time = time.Now()
+
+	lstPath := strings.Split(sSrcFile, "/")
+	lstName := strings.Split(lstPath[len(lstPath)-1], ".")
+	nDate, err = strconv.Atoi(lstName[0])
+	if nil != err {
+		log.Println("[ERROR] Shsz_detail.GrapWriter() : invalid number string: ", lstName[0], err.Error())
+		return nil
+	}
+
+	objRecordDate := time.Date(nDate/10000, time.Month(nDate%10000/100), nDate%100, 21, 6, 9, 0, time.Local)
+	subHours := objToday.Sub(objRecordDate)
+	nDays := subHours.Hours() / 24
+	if nDays <= 16 { ////// Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
+	} else { ////////////////////////// Not Current Month
+		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/10000*10000)
+	}
+
+	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
+		return objHandles.TarWriter
+	} else {
+		var objCompressHandles CompressHandles
+
+		if true == objCompressHandles.OpenFile(sFile, pSelf.GetCompressLevel()) {
+			pSelf.mapFileHandle[sFile] = objCompressHandles
+
+			return pSelf.mapFileHandle[sFile].TarWriter
+		} else {
+			log.Println("[ERR] Shsz_detail.GrapWriter() : failed 2 open *tar.Writer :", sFilePath)
+		}
+
+	}
+
+	return nil
 }

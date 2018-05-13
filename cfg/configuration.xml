@@ -12,6 +12,11 @@
 	<setting name="SZSE.m60" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 60 minute lines (raw data)"/>
 	<setting name="SZSE.d1" value="D:\HQHISDATA\SZSE\DAY\" desc="folder of shenzheng day lines (raw data)"/>
 	<setting name="SZSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shenzheng WEIGHT lines (raw data)"/>
+	<setting name="HKSE.Participant" value=".\HKSE\" desc="FTP:./Participant.txt"/>
+<!--	<setting name="HKSE.shase_rzrq_by_date" value=".\HKSE\shase_rzrq_by_date\" desc="FTP:./shase_rzrq_by_date"/>
+	<setting name="HKSE.sznse_rzrq_by_date" value=".\HKSE\sznse_rzrq_by_date\" desc="FTP:./sznse_rzrq_by_date"/>
+	<setting name="HKSE.shsz_idx_by_date" value=".\HKSE\shsz_idx_by_date\" desc="FTP:./shsz_idx_by_date"/>
+	<setting name="HKSE.shsz_detail" value=".\HKSE\shsz_detail\" desc="FTP:./shsz_detail"/>-->
 	<setting name="SSE.coderange" value="000001~000999" desc="security id range of shanghai market"/>
 	<setting name="SSE.coderange" value="600000~609999" desc="security id range of shanghai market"/>
 	<setting name="SSE.coderange" value="510000~519999" desc="security id range of shanghai market"/>

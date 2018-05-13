@@ -116,21 +116,18 @@ func (pSelf *FileScheduler) Active() bool {
 			Value   string   `xml:"value,attr"`
 		} `xml:"setting"`
 	}
-
-	///////////////////////////// Analyze configuration(.xml) 4 Engine
+	///////////////////////////// Analyze configuration(.xml) 4 Engine ////////////////////////////
 	sXmlContent, err := ioutil.ReadFile(pSelf.XmlCfgPath)
 	if err != nil {
 		log.Println("[WARN] FileScheduler.Active() : cannot locate configuration file, path: ", pSelf.XmlCfgPath)
 		return false
 	}
-
 	err = xml.Unmarshal(sXmlContent, &objCfg)
 	if err != nil {
 		log.Println("[WARN] FileScheduler.Active() : cannot parse xml configuration file, error: ", err.Error())
 		return false
 	}
-
-	/////////////////////////// Extract Settings
+	/////////////////////////// Extract Settings ///////////////////////////////////////////////////
 	log.Println("[INF] FileScheduler.Active() : [Xml.Setting] configuration file version: ", objCfg.Version)
 	pSelf.LastUpdateTime = time.Now().AddDate(-1, 0, -1)
 	pSelf.DataSourceConfig = make(map[string]DataSourceConfig)
@@ -166,16 +163,13 @@ func (pSelf *FileScheduler) Active() bool {
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting]", sResType, pSelf.DataSourceConfig[sResType].MkID, pSelf.DataSourceConfig[sResType].Folder)
 		}
 	}
-
 	/////////////////////////// First Time 2 Build Resources
 	if true == pSelf.compressSyncResource() {
 		return true
 	}
-
 	if false == pSelf.RefSyncSvr.LoadResList() {
 		return false
 	}
-
 	pSelf.LastUpdateTime = time.Now() // update time
 	log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Resources List Builded! ......", pSelf.LastUpdateTime.Format("2006-01-02 15:04:05"))
 	go pSelf.ResRebuilder()
@@ -305,8 +299,7 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 			var objNewResList ResourceList
 			var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
 			log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))
-
-			/////////////////////// iterate data source configuration && compress quotation files
+			/////////////////////// iterate data source configuration && compress quotation files ////////
 			for sResType, objDataSrcCfg := range pSelf.DataSourceConfig {
 				lstRes, bIsOk := objCompressor.XCompress(sResType, &objDataSrcCfg, pSelf.GetRangeOP(sResType))
 				if true == bIsOk {
@@ -318,13 +311,12 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 					return false
 				}
 			}
-
+			/////////////////////// Set rebuild data 2 Response obj. ////////////////////////////////
 			pSelf.RefSyncSvr.SetResList(&objNewResList)
 			pSelf.LastUpdateTime = time.Now() // update time
 			sBuildedTime := pSelf.LastUpdateTime.Format("2006-01-02 15:04:05")
 			log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Sync Resources Builded! ......", sBuildedTime)
-
-			//////////////////////// save status 2 ./status.dat
+			//////////////////////// save status 2 ./status.dat /////////////////////////////////////
 			objStatusSaver, err := os.Create("./status.dat")
 			defer objStatusSaver.Close()
 			if nil != err {
