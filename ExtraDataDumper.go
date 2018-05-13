@@ -38,7 +38,7 @@ func init() {
 	flag.IntVar(&nTTL, "ttl", 3600*6, " (time to live (default: 3600 * 6 seconds)")
 	flag.StringVar(&sLogFile, "logpath", "./FtpData.log", "log file's path (default:./FtpData.log)")
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
-	flag.StringVar(&sTmpFolder, "dir", "./FtpData/", "data folder path (default :./FtpData/)")
+	flag.StringVar(&sTmpFolder, "dir", "./FtpCache/", "data folder path (default :./FtpCache/)")
 	// [Mandatory]
 	flag.StringVar(&sAccount, "account", "", "login user name (default: '' ")
 	flag.StringVar(&sPassword, "password", "", "login password () default : '' ")
