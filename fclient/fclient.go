@@ -80,6 +80,7 @@ type FileSyncClient struct {
 	CompleteCount int                // Task Complete Count
 	objSeqLock    *sync.Mutex        // Data Seq Map Locker
 	objMapDataSeq map[string]DataSeq // Map Of Last Sequence No
+	StopFlagFile  string             // Stop Flag File Path
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -125,7 +126,22 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	///////////////////////////// Check Tasks Status //////////////////////////////
 	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; i++ {
 		time.Sleep(1 * time.Second)
+
+		if pSelf.StopFlagFile != "" {
+			objStopFlag, err := os.Open(pSelf.StopFlagFile)
+			if nil == err {
+				objStopFlag.Close()
+				log.Println("[WARN] FileSyncServer.DoTasks() : program terminated by stop flag file : ", pSelf.StopFlagFile)
+				err := os.Remove(pSelf.StopFlagFile)
+				if err != nil {
+					log.Println("[WARN] FileSyncServer.DoTasks() : cannot remove stop flag file :", pSelf.StopFlagFile)
+				}
+				os.Exit(100)
+			}
+
+		}
 	}
+
 	pSelf.dumpProgress(0)
 	time.Sleep(time.Second * 3)
 	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
@@ -201,6 +217,16 @@ func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder s
 
 				if objStatus.Status == ST_Completed {
 					go pSelf.ExtractResData(sTargetFolder, objStatus)
+				}
+
+				if objStatus.Status == ST_Ignore {
+					pSelf.dumpProgress(1)
+					pSelf.objSeqLock.Lock()
+					objDataSeq, _ := pSelf.objMapDataSeq[objStatus.DataType]
+					objDataSeq.LastSeqNo = objStatus.SeqNo
+					objDataSeq.UncompressFlag = false
+					pSelf.objMapDataSeq[objStatus.DataType] = objDataSeq
+					pSelf.objSeqLock.Unlock()
 				}
 			default:
 				if (len(refTaskChannel) + len(refResFileChannel)) == 0 {
