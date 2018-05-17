@@ -231,16 +231,13 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 		}
 
 		nDataLen := len(bytesData)
-		for {
+		for nIndex < nDataLen {
 			hdr := new(tar.Header) // Create tar header
 			//hdr, err := tar.FileInfoHeader(oFileInfo, "")
 			hdr.Name = pILoader.GenFilePath(sRecursivePath)
 			bData, nDate, nOffset := pILoader.LoadFromFile(bytesData[nIndex:])
 			nIndex += nOffset
-			if nIndex >= nDataLen {
-				break
-			}
-
+			// log.Printf("pos:%d(%d) >= len:%d", nIndex, nOffset, nDataLen)
 			pTarWriter := pILoader.GrapWriter(pILoader.GenFilePath(sDestFile), nDate, sSrcFile)
 			if nil == pTarWriter {
 				return false
@@ -379,8 +376,6 @@ func (pSelf *Minutes60RecordIO) GenFilePath(sFileName string) string {
 func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	var err error
 	var nOffset int = 0
-	var bLine []byte
-	var i int = 0
 	var nReturnDate int = -100
 	var objToday time.Time = time.Now()
 	var rstr string = ""
@@ -402,9 +397,9 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		Voip         float64 // Voip
 	} // 60 minutes k-line
 
+	bNewBegin := true
 	bLines := bytes.Split(bytesData, []byte("\n"))
-	nCount := len(bLines)
-	for i, bLine = range bLines {
+	for _, bLine := range bLines {
 		nOffset += (len(bLine) + 1)
 		lstRecords := strings.Split(string(bLine), ",")
 		if len(lstRecords[0]) <= 0 {
@@ -428,7 +423,6 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 		// cal. 60 minutes k-lines
 		nCurTime, _ := strconv.Atoi(lstRecords[1])
-		nCurTime /= 1000
 		objMin60.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
 		objMin60.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
 		objMin60.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
@@ -447,8 +441,12 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 			nCurIndex = 3
 			nPeriodTime = 150000
 		}
-		/////////log.Println("--->", i, nCurTime, objMin60.Time)
+		if objMin60.Date > 20180508 {
+			//log.Printf("(%d)---> Date=%d, CurTime=%d, ObjTime=%d, Idx=%d:%d", i, objMin60.Date, nCurTime, objMin60.Time, nLastIndex, nCurIndex)
+		}
 		if nReturnDate != objMin60.Date {
+			bNewBegin = false
+			//log.Println("return1.......", nReturnDate, objMin60.Date)
 			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			return []byte(rstr), nReturnDate, nOffset
 		}
@@ -464,9 +462,12 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 			}
 
 			if nCurIndex > 0 {
+				bNewBegin = false
+				log.Println("1. add + ", objMin60.Date, objMin60.Time)
 				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			}
 
+			bNewBegin = true
 			objMin60.Time = nPeriodTime
 			objMin60.Open = objMin60.Close
 			objMin60.High = objMin60.Close
@@ -494,14 +495,16 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 			nNumTrades, _ := strconv.ParseInt(lstRecords[10], 10, 64)
 			objMin60.NumTrades += nNumTrades
 		}
+	}
 
-		if i == (nCount - 1) {
-			if objMin60.Time > 0 {
-				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
-			}
+	if true == bNewBegin {
+		if objMin60.Time > 0 {
+			log.Println("2. add + ", objMin60.Date, objMin60.Time)
+			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 		}
 	}
 
+	//log.Println("return2.......", nReturnDate, objMin60.Date, objMin60.Time)
 	return []byte(rstr), nReturnDate, len(bytesData)
 }
 
