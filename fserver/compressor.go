@@ -463,7 +463,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 			if nCurIndex > 0 {
 				bNewBegin = false
-				log.Println("1. add + ", objMin60.Date, objMin60.Time)
+				//log.Println("1. add + ", objMin60.Date, objMin60.Time)
 				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			}
 
@@ -499,7 +499,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 	if true == bNewBegin {
 		if objMin60.Time > 0 {
-			log.Println("2. add + ", objMin60.Date, objMin60.Time)
+			//log.Println("2. add + ", objMin60.Date, objMin60.Time)
 			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 		}
 	}
