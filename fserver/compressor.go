@@ -431,22 +431,21 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		if nCurTime >= 63000 && nCurTime < 103000 {
 			nCurIndex = 0
 			nPeriodTime = 103000
-		} else if nCurTime >= 103000 && nCurTime < 130000 {
+		} else if nCurTime >= 103000 && nCurTime <= 113000 {
 			nCurIndex = 1
 			nPeriodTime = 130000
-		} else if nCurTime >= 130000 && nCurTime < 140000 {
+		} else if nCurTime > 113000 && nCurTime < 140000 {
 			nCurIndex = 2
 			nPeriodTime = 140000
 		} else if nCurTime >= 140000 && nCurTime <= 160000 {
 			nCurIndex = 3
 			nPeriodTime = 150000
+		} else {
+			continue
 		}
-		if objMin60.Date > 20180508 {
-			//log.Printf("(%d)---> Date=%d, CurTime=%d, ObjTime=%d, Idx=%d:%d", i, objMin60.Date, nCurTime, objMin60.Time, nLastIndex, nCurIndex)
-		}
+
 		if nReturnDate != objMin60.Date {
 			bNewBegin = false
-			//log.Println("return1.......", nReturnDate, objMin60.Date)
 			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			return []byte(rstr), nReturnDate, nOffset
 		}
@@ -463,7 +462,6 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 			if nCurIndex > 0 {
 				bNewBegin = false
-				//log.Println("1. add + ", objMin60.Date, objMin60.Time)
 				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			}
 
@@ -499,12 +497,10 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 	if true == bNewBegin {
 		if objMin60.Time > 0 {
-			//log.Println("2. add + ", objMin60.Date, objMin60.Time)
 			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 		}
 	}
 
-	//log.Println("return2.......", nReturnDate, objMin60.Date, objMin60.Time)
 	return []byte(rstr), nReturnDate, len(bytesData)
 }
 
