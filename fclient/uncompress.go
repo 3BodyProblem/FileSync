@@ -45,7 +45,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		nFileOpenMode |= os.O_TRUNC
 	}
 
-	log.Println(sZipSrcPath, sSubPath)
 	sZipSrcPath = strings.Replace(sZipSrcPath, "\\", "/", -1)
 	sLocalFolder = strings.Replace(sLocalFolder, "\\", "/", -1)
 	objZipReader, err := os.Open(sZipSrcPath)
