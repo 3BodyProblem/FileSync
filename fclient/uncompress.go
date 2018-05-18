@@ -30,6 +30,7 @@ type Uncompress struct {
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
 func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
+	nFileOpenMode := os.O_RDWR | os.O_CREATE
 	var objMapFile map[string]bool = make(map[string]bool, 1024*8)
 	var objMapFolder map[string]bool = make(map[string]bool, 1024*8)
 	var sLocalFolder string = path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
@@ -38,6 +39,13 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
 	}
 
+	if false == strings.Contains(sSubPath, "HKSE") {
+		nFileOpenMode |= os.O_APPEND
+	} else {
+		nFileOpenMode |= os.O_TRUNC
+	}
+
+	log.Println(sZipSrcPath, sSubPath)
 	sZipSrcPath = strings.Replace(sZipSrcPath, "\\", "/", -1)
 	sLocalFolder = strings.Replace(sLocalFolder, "\\", "/", -1)
 	objZipReader, err := os.Open(sZipSrcPath)
@@ -86,7 +94,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			}
 
 			///////////////////////// Open File ///////////////////////////////////////
-			fw, err := os.OpenFile(sTargetFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+			fw, err := os.OpenFile(sTargetFile, nFileOpenMode, 0644)
 			if err != nil {
 				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, sLocalFolder, err.Error())
 				return false
