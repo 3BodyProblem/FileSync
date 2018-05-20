@@ -55,7 +55,7 @@ type FileSyncServer struct {
 func (pSelf *FileSyncServer) RunServer() {
 	objSrv := &http.Server{
 		Addr:         pSelf.ServerHost,
-		ReadTimeout:  time.Second * 16,
+		ReadTimeout:  time.Second * 60 * 2,
 		WriteTimeout: time.Second * 60 * 10,
 	}
 
