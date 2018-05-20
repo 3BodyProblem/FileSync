@@ -186,10 +186,10 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
 	var refTaskChannel chan int
 	var refResFileChannel chan DownloadStatus
-	var nMaxDownloadThread int = 3
+	var nMaxDownloadThread int = 6
 
-	if len(lstDownloadTask) > 60 {
-		nMaxDownloadThread = 6
+	if len(lstDownloadTask) > 100 {
+		nMaxDownloadThread = 10
 	}
 
 	for i, objRes := range lstDownloadTask {
@@ -308,14 +308,14 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		httpClient := http.Client{
 			CheckRedirect: nil,
 			Jar:           globalCurrentCookieJar,
-			Timeout:       15 * 60 * time.Second,
+			Timeout:       20 * 60 * time.Second,
 			Transport: &http.Transport{
 				Dial: func(netw, addr string) (net.Conn, error) {
-					conn, err := net.DialTimeout(netw, addr, time.Second*60*15)
+					conn, err := net.DialTimeout(netw, addr, time.Second*60*20)
 					if err != nil {
 						return nil, err
 					}
-					conn.SetDeadline(time.Now().Add(time.Second * 60 * 15))
+					conn.SetDeadline(time.Now().Add(time.Second * 60 * 20))
 					return conn, nil
 				},
 				// TLSHandshakeTimeout:   time.Second * 30,
