@@ -324,11 +324,16 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 			},
 		}
 
+		var httpRes *http.Response = nil
 		httpReq, err := http.NewRequest("GET", sUrl, nil)
-		httpRes, err := httpClient.Do(httpReq)
-		if err != nil {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, sMD5, sDateTime, err.Error())
-			return false
+		for i := 0; i < 10; i++ {
+			httpRes, err = httpClient.Do(httpReq)
+			if err != nil {
+				log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, sMD5, sDateTime, err.Error())
+				continue
+			}
+
+			break
 		}
 
 		// get absolute file path
