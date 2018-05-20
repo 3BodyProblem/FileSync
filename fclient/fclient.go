@@ -318,9 +318,9 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 					conn.SetDeadline(time.Now().Add(time.Second * 60 * 15))
 					return conn, nil
 				},
-				TLSHandshakeTimeout:   time.Second * 30,
-				ResponseHeaderTimeout: time.Second * 30,
-				ExpectContinueTimeout: time.Second * 30,
+				// TLSHandshakeTimeout:   time.Second * 30,
+				ResponseHeaderTimeout: time.Second * 50,
+				ExpectContinueTimeout: time.Second * 50,
 			},
 		}
 
