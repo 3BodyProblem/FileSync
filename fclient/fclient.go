@@ -186,10 +186,10 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
 	var refTaskChannel chan int
 	var refResFileChannel chan DownloadStatus
-	var nMaxDownloadThread int = 6
+	var nMaxDownloadThread int = 3
 
-	if len(lstDownloadTask) > 100 {
-		nMaxDownloadThread = 10
+	if len(lstDownloadTask) > 60 {
+		nMaxDownloadThread = 6
 	}
 
 	for i, objRes := range lstDownloadTask {
