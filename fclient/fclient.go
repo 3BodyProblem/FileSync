@@ -318,9 +318,9 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 					conn.SetDeadline(time.Now().Add(time.Second * 60 * 15))
 					return conn, nil
 				},
-				TLSHandshakeTimeout:   time.Second * 8,
-				ResponseHeaderTimeout: time.Second * 8,
-				ExpectContinueTimeout: time.Second * 8,
+				TLSHandshakeTimeout:   time.Second * 30,
+				ResponseHeaderTimeout: time.Second * 30,
+				ExpectContinueTimeout: time.Second * 30,
 			},
 		}
 
@@ -442,13 +442,13 @@ func (pSelf *FileSyncClient) login2Server() bool {
 func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 	// generate list Url string
 	var sUrl string = fmt.Sprintf("http://%s/list", pSelf.ServerHost)
-	log.Println("[INF] FileSyncClient.fetchResList() : /list")
+	log.Println("[INF] FileSyncClient.fetchResList() : [GET] /list")
 
 	// declare http request variable
 	httpClient := http.Client{
 		CheckRedirect: nil,
 		Jar:           globalCurrentCookieJar,
-		Timeout:       8 * time.Second,
+		Timeout:       time.Second * 10,
 	}
 	httpReq, err := http.NewRequest("GET", sUrl, nil)
 	httpRes, err := httpClient.Do(httpReq)
