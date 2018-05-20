@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -95,12 +96,10 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	pSelf.objMapDataSeq = make(map[string]DataSeq)
 	pSelf.dumpProgress(0)
 	if false == pSelf.login2Server() { ////////////////////// Login 2 Server
-		log.Println("[ERR] FileSyncClient.DoTasks() : logon failure : invalid accountid or password, u r not allowed 2 logon the server.")
 		return
 	}
 
 	if false == pSelf.fetchResList(&objResourceList) { ////// List Resource Table
-		log.Println("[ERR] FileSyncClient.DoTasks() : cannot list resource table from server.")
 		return
 	}
 
@@ -303,10 +302,27 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 	if true == objFCompare.Compare() {
 		nTaskStatus = ST_Ignore // Mission Ignored!
 	} else {
-		// generate list Url string
-		var sUrl string = fmt.Sprintf("http://%s/get?uri=%s", pSelf.ServerHost, sUri)
 		// parse && read response string
-		httpClient := http.Client{CheckRedirect: nil, Jar: globalCurrentCookieJar}
+		var sUrl string = fmt.Sprintf("http://%s/get?uri=%s", pSelf.ServerHost, sUri)
+		httpClient := http.Client{
+			CheckRedirect: nil,
+			Jar:           globalCurrentCookieJar,
+			Timeout:       15 * 60 * time.Second,
+			Transport: &http.Transport{
+				Dial: func(netw, addr string) (net.Conn, error) {
+					conn, err := net.DialTimeout(netw, addr, time.Second*60*15)
+					if err != nil {
+						return nil, err
+					}
+					conn.SetDeadline(time.Now().Add(time.Second * 60 * 15))
+					return conn, nil
+				},
+				TLSHandshakeTimeout:   time.Second * 8,
+				ResponseHeaderTimeout: time.Second * 8,
+				ExpectContinueTimeout: time.Second * 8,
+			},
+		}
+
 		httpReq, err := http.NewRequest("GET", sUrl, nil)
 		httpRes, err := httpClient.Do(httpReq)
 		if err != nil {
@@ -368,6 +384,7 @@ func (pSelf *FileSyncClient) login2Server() bool {
 	httpClient := http.Client{
 		CheckRedirect: nil,
 		Jar:           globalCurrentCookieJar,
+		Timeout:       8 * time.Second,
 	}
 	httpReq, err := http.NewRequest("GET", sUrl, nil)
 	httpRes, err := httpClient.Do(httpReq)
@@ -407,7 +424,8 @@ func (pSelf *FileSyncClient) login2Server() bool {
 			return true
 		}
 
-		log.Println("[WARN] FileSyncClient.login2Server() : ", string(body))
+		log.Println("[ERR] FileSyncClient.login2Server() : ", string(body))
+		log.Println("[ERR] FileSyncClient.login2Server() : logon failure : invalid accountid or password, u r not allowed 2 logon the server.")
 	}
 
 	return false
@@ -423,6 +441,7 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 	httpClient := http.Client{
 		CheckRedirect: nil,
 		Jar:           globalCurrentCookieJar,
+		Timeout:       8 * time.Second,
 	}
 	httpReq, err := http.NewRequest("GET", sUrl, nil)
 	httpRes, err := httpClient.Do(httpReq)

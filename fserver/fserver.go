@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 var (
@@ -52,6 +53,12 @@ type FileSyncServer struct {
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Server
 func (pSelf *FileSyncServer) RunServer() {
+	objSrv := &http.Server{
+		Addr:         pSelf.ServerHost,
+		ReadTimeout:  time.Second * 16,
+		WriteTimeout: time.Second * 60 * 10,
+	}
+
 	// Create a http server && Register Http Event
 	http.HandleFunc("/", pSelf.handleDefault)
 	http.HandleFunc("/login", pSelf.handleLogin)
@@ -61,7 +68,7 @@ func (pSelf *FileSyncServer) RunServer() {
 	// Active the http server
 	log.Println("[INF] FileSyncServer.RunServer() : Sync Folder :", pSelf.SyncFolder)
 	log.Println("[INF] FileSyncServer.RunServer() : Server Is Available [", pSelf.ServerHost, "] .........")
-	http.ListenAndServe(pSelf.ServerHost, nil)
+	objSrv.ListenAndServe()
 	log.Println("[INF] FileSyncServer.RunServer() : Server Has Halted.........")
 }
 
