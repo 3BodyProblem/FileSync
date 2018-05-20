@@ -56,7 +56,7 @@ func (pSelf *FileSyncServer) RunServer() {
 	objSrv := &http.Server{
 		Addr:         pSelf.ServerHost,
 		ReadTimeout:  time.Second * 60 * 2,
-		WriteTimeout: time.Second * 60 * 10,
+		WriteTimeout: time.Second * 60 * 15,
 	}
 
 	// Create a http server && Register Http Event
