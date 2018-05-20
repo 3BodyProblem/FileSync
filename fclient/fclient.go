@@ -329,7 +329,8 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		for i := 0; i < 10; i++ {
 			httpRes, err = httpClient.Do(httpReq)
 			if err != nil {
-				log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, sMD5, sDateTime, err.Error())
+				log.Printf("[ERR] FileSyncClient.fetchResource() :  error in response : ", sUrl, sMD5, sDateTime, err.Error())
+				log.Printf("[INF] FileSyncClient.fetchResource() :  URL = %s, MD5 = %s, Download Times = (%d) ", sUrl, sMD5, i)
 				continue
 			}
 
