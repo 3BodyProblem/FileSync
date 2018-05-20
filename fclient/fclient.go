@@ -86,7 +86,7 @@ type FileSyncClient struct {
 
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Client
-func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
+func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	var nEnd int = 0
 	var nBegin int = 0
 	var sCurDataType string = ""
@@ -96,11 +96,11 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	pSelf.objMapDataSeq = make(map[string]DataSeq)
 	pSelf.dumpProgress(0)
 	if false == pSelf.login2Server() { ////////////////////// Login 2 Server
-		return
+		return false
 	}
 
 	if false == pSelf.fetchResList(&objResourceList) { ////// List Resource Table
-		return
+		return false
 	}
 
 	///////////////////// Dispatch Downloading Tasks
@@ -144,6 +144,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) {
 	pSelf.dumpProgress(0)
 	time.Sleep(time.Second * 3)
 	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
+	return true
 }
 
 func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo DownloadStatus) {

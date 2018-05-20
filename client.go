@@ -61,8 +61,12 @@ func main() {
 	log.Println("[INF] [Ver] ######### 1.0.2 ####################")
 	log.Println("[INF] [Begin] ##################################")
 
-	objSyncClient := &fclient.FileSyncClient{StopFlagFile: sStopFlagFile, ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL, ProgressFile: sProgressFile, CompleteCount: 0, TaskCount: 1}
-	objSyncClient.DoTasks(sUncompressFolder)
+	for i := 0; i < 6; i++ {
+		objSyncClient := &fclient.FileSyncClient{StopFlagFile: sStopFlagFile, ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL, ProgressFile: sProgressFile, CompleteCount: 0, TaskCount: 1}
+		if true == objSyncClient.DoTasks(sUncompressFolder) {
+			break
+		}
+	}
 
 	log.Println("[INF] [ End ] ##################################")
 }
