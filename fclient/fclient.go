@@ -308,19 +308,19 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		httpClient := http.Client{
 			CheckRedirect: nil,
 			Jar:           globalCurrentCookieJar,
-			Timeout:       20 * 60 * time.Second,
+			Timeout:       10 * 60 * time.Second,
 			Transport: &http.Transport{
 				Dial: func(netw, addr string) (net.Conn, error) {
-					conn, err := net.DialTimeout(netw, addr, time.Second*60*20)
+					conn, err := net.DialTimeout(netw, addr, time.Second*60*10)
 					if err != nil {
 						return nil, err
 					}
-					conn.SetDeadline(time.Now().Add(time.Second * 60 * 20))
+					conn.SetDeadline(time.Now().Add(time.Second * 60 * 10))
 					return conn, nil
 				},
-				// TLSHandshakeTimeout:   time.Second * 30,
-				ResponseHeaderTimeout: time.Second * 50,
-				ExpectContinueTimeout: time.Second * 50,
+				// TLSHandshakeTimeout:   time.Second * 10,
+				ResponseHeaderTimeout: time.Second * 60 * 1,
+				ExpectContinueTimeout: time.Second * 60 * 1,
 			},
 		}
 
