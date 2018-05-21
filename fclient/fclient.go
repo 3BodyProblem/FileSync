@@ -167,7 +167,7 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 				}
 
 				pSelf.dumpProgress(1)
-				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d-->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.URI)
+				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d-->%d] -----------> %s (%d/%d)", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.URI, pSelf.CompleteCount, pSelf.TaskCount)
 
 				pSelf.objSeqLock.Lock()
 				objDataSeq.LastSeqNo = objResInfo.SeqNo
