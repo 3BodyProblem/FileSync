@@ -300,6 +300,18 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 	case objDataSrc.MkID == "hkse" && sDataType == ".shsz_detail":
 		objRecordIO := Shsz_detail{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
 		return pSelf.translateFolder(filepath.Join(sDestFolder, "shsz_detail/shsz_detail."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "qlfile" && sDataType == ".column_dy_bk":
+		objRecordIO := DYColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "dybk."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "qlfile" && sDataType == ".column_gn_bk":
+		objRecordIO := GNColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "gnbk."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "qlfile" && sDataType == ".column_hy_bk":
+		objRecordIO := HYColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "hybk."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "qlfile" && sDataType == ".column_zs_bk":
+		objRecordIO := ZSColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.translateFolder(filepath.Join(sDestFolder, "zsbk."), objDataSrc.Folder, &objRecordIO)
 	default:
 		log.Printf("[ERR] Compressor.XCompress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
 		return lstRes, false
@@ -797,6 +809,82 @@ type WeightRecordIO struct {
 }
 
 func (pSelf *WeightRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+///////////////////////// dy column ///////////////////////////////////////////
+type DYColumnRecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *DYColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
+	sTmpName := strings.ToLower(sFileName)
+
+	if strings.Contains(sTmpName, "dybk.ini") == true {
+		return true
+	}
+
+	return false
+}
+
+func (pSelf *DYColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+///////////////////////// gn column ///////////////////////////////////////////
+type GNColumnRecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *GNColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
+	sTmpName := strings.ToLower(sFileName)
+
+	if strings.Contains(sTmpName, "gnbk.ini") == true {
+		return true
+	}
+
+	return false
+}
+
+func (pSelf *GNColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+///////////////////////// hy column ///////////////////////////////////////////
+type HYColumnRecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *HYColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
+	sTmpName := strings.ToLower(sFileName)
+
+	if strings.Contains(sTmpName, "hybk.ini") == true {
+		return true
+	}
+
+	return false
+}
+
+func (pSelf *HYColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 0, len(bytesData)
+}
+
+///////////////////////// zs column ///////////////////////////////////////////
+type ZSColumnRecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *ZSColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
+	sTmpName := strings.ToLower(sFileName)
+
+	if strings.Contains(sTmpName, "zsbk.ini") == true {
+		return true
+	}
+
+	return false
+}
+
+func (pSelf *ZSColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	return bytesData, 0, len(bytesData)
 }
 
