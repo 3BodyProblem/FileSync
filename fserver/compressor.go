@@ -54,7 +54,6 @@ func (pSelf *CompressHandles) OpenFile(sFilePath string, nGZipCompressLevel int)
 		return false
 	}
 
-	log.Printf("[INF] CompressHandles.OpenFile() : [OK] (%s)", sFilePath)
 	return true
 }
 
@@ -67,7 +66,6 @@ func (pSelf *CompressHandles) CloseFile() {
 	}
 	if pSelf.TarFile != nil {
 		pSelf.TarFile.Close()
-		log.Printf("[INF] CompressHandles.CloseFile() : [OK] (%s)", pSelf.TarFile.Name())
 	}
 }
 

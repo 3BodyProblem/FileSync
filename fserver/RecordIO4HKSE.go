@@ -109,7 +109,6 @@ func (pSelf *Sznse_rzrq_by_date) GrapWriter(sFilePath string, nDate int, sSrcFil
 	var objToday time.Time = time.Now()
 
 	lstPath := strings.Split(sSrcFile, "/")
-	log.Println(sSrcFile, lstPath[0], lstPath[1])
 	lstName := strings.Split(lstPath[len(lstPath)-1], ".")
 	nDate, err = strconv.Atoi(lstName[0])
 	if nil != err {
