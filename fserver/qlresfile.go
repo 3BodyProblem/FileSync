@@ -6,8 +6,8 @@
 package fserver
 
 import (
-	"exec"
 	"log"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -81,9 +81,15 @@ func parseTimeStr(sTimeString string) (int, int, int, int, int, int, bool) {
 func SyncQLFtpFilesInPeriodTime(nBeginTime int, nEndTime int) bool {
 	var nNowTime int = int(time.Now().Hour())*10000 + int(time.Now().Minute())*100 + int(time.Now().Second())
 
-	if nNowTime >= nBeginTime && nBeginTime <= nEndTime {
-		log.Println("call shell...............................")
-		log.Println(exec.Command("ExtraDataDumper.bat"))
+	if nNowTime >= nBeginTime && nNowTime <= nEndTime {
+		log.Printf("[INF] SyncQLFtpFilesInPeriodTime( %d, %d ) : execute: (%d) ExtraDataDumper.bat", nBeginTime, nEndTime, nNowTime)
+		cmd := exec.Command("ExtraDataDumper.bat")
+		if err := cmd.Run(); err != nil {
+			log.Printf("[ERR] SyncQLFtpFilesInPeriodTime( %d, %d ) : error info: %v", nBeginTime, nEndTime, err)
+			return false
+		}
+
+		log.Printf("[INF] SyncQLFtpFilesInPeriodTime( %d, %d ) : executed!", nBeginTime, nEndTime)
 
 		return true
 	}
