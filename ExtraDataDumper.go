@@ -95,8 +95,6 @@ func (pSelf *FTPFolderSync) FilesSync() int {
 			}
 		}
 
-		log.Printf("[INF] FTPFolderSync::FilesSync() : ignore file : %s --> %s", sFilePath, sLocalFile)
-
 		return nFetchCount
 	}
 	// Walk Ftp && Download
