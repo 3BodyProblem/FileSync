@@ -6,6 +6,7 @@
 package fserver
 
 import (
+	"exec"
 	"log"
 	"strconv"
 	"strings"
@@ -82,6 +83,7 @@ func SyncQLFtpFilesInPeriodTime(nBeginTime int, nEndTime int) bool {
 
 	if nNowTime >= nBeginTime && nBeginTime <= nEndTime {
 		log.Println("call shell...............................")
+		log.Println(exec.Command("ExtraDataDumper.bat"))
 
 		return true
 	}
