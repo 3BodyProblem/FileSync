@@ -37,7 +37,7 @@ func init() {
 	flag.IntVar(&nPort, "port", 40021, "ftp server's listen port (default:40021)")
 	flag.IntVar(&nTTL, "ttl", 3600*6, " (time to live (default: 3600 * 6 seconds)")
 	flag.StringVar(&sLogFile, "logpath", "./FtpData.log", "log file's path (default:./FtpData.log)")
-	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
+	flag.BoolVar(&bDumpLog, "dumplog", true, "a switch 4 log dump (default:false)")
 	flag.StringVar(&sTmpFolder, "dir", "./HKSE/", "data folder path (default :./HKSE/)")
 	// [Mandatory]
 	flag.StringVar(&sAccount, "account", "", "login user name (default: '' ")
@@ -68,33 +68,28 @@ func (pSelf *FTPFolderSync) FilesSync() int {
 	if pSelf.SpecifyFile != "" {
 		sFilePath := strings.Replace(filepath.Join(pSelf.FTPResFolder, pSelf.SpecifyFile), "\\", "/", -1)
 		sLocalFile := strings.Replace(filepath.Join(pSelf.LocalFolder, pSelf.SpecifyFile), "\\", "/", -1)
+		log.Printf("[INF] FTPFolderSync::FilesSync() : downloading file : %s --> %s", sFilePath, sLocalFile)
 
-		_, err = os.Stat(sLocalFile)
-		if err != nil {
-			if os.IsNotExist(err) {
-				log.Printf("[INF] FTPFolderSync::FilesSync() : downloading file : %s --> %s", sFilePath, sLocalFile)
-				_, err = pSelf.FTPHandlePtr.Retr(sFilePath, func(r io.Reader) error {
-					fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-					if err != nil {
-						log.Println("[ERR] FTPFolderSync::FilesSync() : cannot create file, file name =", sLocalFile, err.Error())
-						os.Exit(-100)
-					}
-
-					_, err = io.Copy(fw, r)
-					if err != nil {
-						log.Println("[ERR] FTPFolderSync::FilesSync() : cannot write 2 file, file name =", sLocalFile, err.Error())
-						fw.Close()
-						os.Exit(-100)
-					}
-
-					fw.Close()
-					nFetchCount += 1
-					log.Printf("[Done] FTPFolderSync::FilesSync() : Ftp File : FTP[%s] ---> LOCAL[%s], Fetch %d Files", sFilePath, sLocalFile, nFetchCount)
-
-					return err
-				})
+		_, err = pSelf.FTPHandlePtr.Retr(sFilePath, func(r io.Reader) error {
+			fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+			if err != nil {
+				log.Println("[ERR] FTPFolderSync::FilesSync() : cannot create file, file name =", sLocalFile, err.Error())
+				return nil
 			}
-		}
+
+			_, err = io.Copy(fw, r)
+			if err != nil {
+				log.Println("[ERR] FTPFolderSync::FilesSync() : cannot write 2 file, file name =", sLocalFile, err.Error())
+				fw.Close()
+				return nil
+			}
+
+			fw.Close()
+			nFetchCount += 1
+			log.Printf("[Done] FTPFolderSync::FilesSync() : Ftp File : FTP[%s] ---> LOCAL[%s], Fetch %d Files", sFilePath, sLocalFile, nFetchCount)
+
+			return err
+		})
 
 		return nFetchCount
 	}
@@ -141,9 +136,16 @@ func (pSelf *FTPFolderSync) FilesSync() int {
 	return nFetchCount
 }
 
-func (pSelf *FTPFolderSync) SyncByTime() int {
+func (pSelf *FTPFolderSync) SyncBeforeTime(nTime int /*650-->6:50*/) int {
+	nHour := int(time.Now().Hour())
+	nMinute := int(time.Now().Minute())
+	nNowT := nHour*100 + nMinute
 
-	return pSelf.FilesSync()
+	if nNowT < nTime {
+		return pSelf.FilesSync()
+	} else {
+		return 0
+	}
 }
 
 // Program Entry Function
@@ -188,7 +190,7 @@ func main() {
 
 	/////////////// Download ./Participant.txt ////////////////////////////////////
 	objParticipantSync := FTPFolderSync{LocalFolder: sTmpFolder, FTPResFolder: "/", SpecifyFile: "Participant.txt", FTPHandlePtr: ftp}
-	objParticipantSync.FilesSync()
+	objParticipantSync.SyncBeforeTime(650)
 	/////////////// Download shase_rzrq_by_date ////////////////////////////////////
 	objSHRzrqSync := FTPFolderSync{LocalFolder: filepath.Join(sTmpFolder, "shase_rzrq_by_date/"), FTPResFolder: "/shase_rzrq_by_date/", FTPHandlePtr: ftp}
 	objSHRzrqSync.FilesSync()
