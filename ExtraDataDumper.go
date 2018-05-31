@@ -196,13 +196,5 @@ func main() {
 	objSHSZDetailSync := FTPFolderSync{LocalFolder: filepath.Join(sTmpFolder, "shsz_detail/"), FTPResFolder: "/shsz_detail/", FTPHandlePtr: ftp}
 	objSHSZDetailSync.FilesSync()
 
-	////////////// Rename TmpFolder Name
-	/*	os.RemoveAll("./HKSE")
-		err = os.Rename(sTmpFolder, "./HKSE/")
-		if err != nil {
-			log.Println("[ERR] cannot remove folder, folder name =", sTmpFolder, err.Error())
-			return
-		}*/
-
 	log.Println("[INF] [ End ] ##################################")
 }
