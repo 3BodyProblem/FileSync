@@ -268,46 +268,46 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 	switch {
 	case (objDataSrc.MkID == "sse" && sDataType == ".wt") || (objDataSrc.MkID == "szse" && sDataType == ".wt"):
 		objRecordIO := WeightRecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of Weight data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "WEIGHT/WEIGHT."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "WEIGHT/WEIGHT."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".d1") || (objDataSrc.MkID == "szse" && sDataType == ".d1"):
 		objRecordIO := Day1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of Day data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "DAY/DAY."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "DAY/DAY."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m1") || (objDataSrc.MkID == "szse" && sDataType == ".m1"):
 		objRecordIO := Minutes1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M1 data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN/MIN."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "MIN/MIN."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m5") || (objDataSrc.MkID == "szse" && sDataType == ".m5"):
 		objRecordIO := Minutes5RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M5 data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN5/MIN5."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "MIN5/MIN5."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m60") || (objDataSrc.MkID == "szse" && sDataType == ".m60"):
 		objRecordIO := Minutes60RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M60 data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "MIN60/MIN60."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "MIN60/MIN60."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "hkse" && sDataType == ".participant":
 		objRecordIO := ParticipantRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "Participant."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "Participant."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "hkse" && sDataType == ".shase_rzrq_by_date":
 		objRecordIO := Shase_rzrq_by_date{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "shase_rzrq_by_date/shase_rzrq_by_date."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "shase_rzrq_by_date/shase_rzrq_by_date."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "hkse" && sDataType == ".sznse_rzrq_by_date":
 		objRecordIO := Sznse_rzrq_by_date{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "sznse_rzrq_by_date/sznse_rzrq_by_date."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "sznse_rzrq_by_date/sznse_rzrq_by_date."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "hkse" && sDataType == ".shsz_idx_by_date":
 		objRecordIO := Shsz_idx_by_date{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "shsz_idx_by_date/shsz_idx_by_date."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "shsz_idx_by_date/shsz_idx_by_date."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "hkse" && sDataType == ".shsz_detail":
 		objRecordIO := Shsz_detail{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "shsz_detail/shsz_detail."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "shsz_detail/shsz_detail."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "qlfile" && sDataType == ".column_dy_bk":
 		objRecordIO := DYColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "dybk."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "dybk."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "qlfile" && sDataType == ".column_gn_bk":
 		objRecordIO := GNColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "gnbk."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "gnbk."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "qlfile" && sDataType == ".column_hy_bk":
 		objRecordIO := HYColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "hybk."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "hybk."), objDataSrc.Folder, &objRecordIO)
 	case objDataSrc.MkID == "qlfile" && sDataType == ".column_zs_bk":
 		objRecordIO := ZSColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
-		return pSelf.translateFolder(filepath.Join(sDestFolder, "zsbk."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "zsbk."), objDataSrc.Folder, &objRecordIO)
 	default:
 		log.Printf("[ERR] Compressor.XCompress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
 		return lstRes, false
@@ -316,7 +316,7 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 
 ///////////////////////////////////// [InnerMethod] ///////////////////////////////////////////
 // [Method] load source data 2 targer folder
-func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader I_Record_IO) ([]ResDownload, bool) {
+func (pSelf *Compressor) TranslateFolder(sDestFile, sSrcFolder string, pILoader I_Record_IO) ([]ResDownload, bool) {
 	var lstRes []ResDownload
 	var sMkFolder string = path.Dir(sDestFile)
 	//////////////// Prepare Data Folder && File Handles
@@ -327,13 +327,13 @@ func (pSelf *Compressor) translateFolder(sDestFile, sSrcFolder string, pILoader 
 
 	err := os.MkdirAll(sMkFolder, 0755)
 	if err != nil {
-		log.Println("[ERR] Compressor.translateFolder() : cannot build target folder 4 zip file :", sMkFolder)
+		log.Println("[ERR] Compressor.TranslateFolder() : cannot build target folder 4 zip file :", sMkFolder)
 		return lstRes, false
 	}
 	///////////////// Initialize Object type(I_Record_IO)
-	log.Printf("[INF] Compressor.translateFolder() : compressing ---> (%s)", sSrcFolder)
+	log.Printf("[INF] Compressor.TranslateFolder() : compressing ---> (%s)", sSrcFolder)
 	if false == pILoader.Initialize() {
-		log.Println("[ERR] Compressor.translateFolder() : Cannot initialize I_Record_IO object, ", sSrcFolder)
+		log.Println("[ERR] Compressor.TranslateFolder() : Cannot initialize I_Record_IO object, ", sSrcFolder)
 		return lstRes, false
 	}
 	///////////////// Compressing Source Data Folder

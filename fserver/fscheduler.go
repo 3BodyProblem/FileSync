@@ -170,14 +170,14 @@ func (pSelf *FileScheduler) Active() bool {
 		}
 	}
 	/////////////////////////// First Time 2 Build Resources
-	if true == pSelf.compressSyncResource() {
+	if true == pSelf.CompressSyncResource("") {
 		return true
 	}
 	if false == pSelf.RefSyncSvr.LoadResList() {
 		return false
 	}
 
-	log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Resources List Builded! ......")
+	log.Println("[INF] FileScheduler.CompressSyncResource() : [OK] Resources List Builded! ......")
 	go pSelf.ResRebuilder()
 
 	return true
@@ -186,31 +186,36 @@ func (pSelf *FileScheduler) Active() bool {
 func (pSelf *FileScheduler) ResRebuilder() {
 	for {
 		time.Sleep(time.Second * 15)                          // Sleep 4 a while
-		pSelf.compressSyncResource()                          // Judge whether 2 compress quotation files
+		pSelf.CompressSyncResource("")                        // Judge whether 2 compress quotation files
 		if true == SyncQLFtpFilesInPeriodTime(64000, 65000) { // Sync qiulong ftp resource files (HKSE)
+			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
 		}
 		if true == SyncQLFtpFilesInPeriodTime(85000, 90000) { // Sync qiulong ftp resource files (SSE/SZSE)
+			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
 		}
 	}
 }
 
 ///////////////////////////////////// [InnerMethod]
-func (pSelf *FileScheduler) compressSyncResource() bool {
+func (pSelf *FileScheduler) CompressSyncResource(sSpecifyResType string) bool {
+	sSpecifyResType = strings.ToLower(sSpecifyResType)
 	objNowTime := time.Now()
 	objBuildTime := time.Date(objNowTime.Year(), objNowTime.Month(), objNowTime.Day(), pSelf.BuildTime/10000, pSelf.BuildTime/100%100, pSelf.BuildTime%100, 0, time.Local)
 
 	/////////////////////////////// Judge Whether 2 Compress Quotation Files
-	objStatusLoader, err := os.Open("./status.dat")
-	defer objStatusLoader.Close()
-	if nil == err {
-		bytesData := make([]byte, 20)
-		objStatusLoader.Read(bytesData)
-		nYY, nMM, nDD, _, _, _, bIsOk := parseTimeStr(string(bytesData))
-		if true == bIsOk {
-			if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
-				return false
+	if "" == sSpecifyResType {
+		objStatusLoader, err := os.Open("./status.dat")
+		defer objStatusLoader.Close()
+		if nil == err {
+			bytesData := make([]byte, 20)
+			objStatusLoader.Read(bytesData)
+			nYY, nMM, nDD, _, _, _, bIsOk := parseTimeStr(string(bytesData))
+			if true == bIsOk {
+				if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
+					return false
+				}
 			}
 		}
 	}
@@ -219,29 +224,38 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 	if objNowTime.After(objBuildTime) == true {
 		var objNewResList ResourceList
 		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
-		log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))
+		log.Printf("[INF] FileScheduler.CompressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))
 		/////////////////////// iterate data source configuration && compress quotation files ////////
 		for sResType, objDataSrcCfg := range pSelf.DataSourceConfig {
-			lstRes, bIsOk := objCompressor.XCompress(sResType, &objDataSrcCfg, pSelf.GetRangeOP(sResType))
-			if true == bIsOk {
-				/////////////// record resource path && MD5 which has been compressed
-				objNewResList.Download = append(objNewResList.Download, lstRes...)
-				log.Println("[INF] FileScheduler.compressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
-			} else {
-				log.Println("[WARN] FileScheduler.compressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
-				return false
+			sDataType := strings.ToLower(sResType[:strings.Index(sResType, ".")])
+			if "" == sSpecifyResType || sDataType == sSpecifyResType {
+				lstRes, bIsOk := objCompressor.XCompress(sResType, &objDataSrcCfg, pSelf.GetRangeOP(sResType))
+				if true == bIsOk {
+					/////////////// record resource path && MD5 which has been compressed
+					objNewResList.Download = append(objNewResList.Download, lstRes...)
+					log.Println("[INF] FileScheduler.CompressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
+				} else {
+					log.Println("[WARN] FileScheduler.CompressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
+					return false
+				}
 			}
 		}
-		/////////////////////// Set rebuild data 2 Response obj. ////////////////////////////////
-		pSelf.RefSyncSvr.SetResList(&objNewResList)
-		log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Sync Resources Builded! ......")
-		//////////////////////// save status 2 ./status.dat /////////////////////////////////////
-		objStatusSaver, err := os.Create("./status.dat")
-		if nil != err {
-			log.Println("[ERROR] FileScheduler.compressSyncResource() : [FAILURE] cannot save ./status.dat 2 disk :", err.Error())
-		} else {
-			objStatusSaver.Write([]byte(objNowTime.Format("2006-01-02 15:04:05")))
-			objStatusSaver.Close()
+
+		if "" == sSpecifyResType { //// Unspecify Resource Type
+			//////////////////////// Save status 2 ./status.dat /////////////////////////////////////
+			objStatusSaver, err := os.Create("./status.dat")
+			if nil != err {
+				log.Println("[ERROR] FileScheduler.CompressSyncResource() : [FAILURE] cannot save ./status.dat 2 disk :", err.Error())
+			} else {
+				objStatusSaver.Write([]byte(objNowTime.Format("2006-01-02 15:04:05")))
+				objStatusSaver.Close()
+			}
+			/////////////////////// Set rebuild data 2 Response obj. ////////////////////////////////
+			pSelf.RefSyncSvr.SetResList(&objNewResList)
+			log.Println("[INF] FileScheduler.CompressSyncResource() : [OK] Sync Resources(All) Builded! ......")
+		} else { /////////////////////// Specify Resource Type
+			pSelf.RefSyncSvr.UpdateResList(&objNewResList)
+			log.Printf("[INF] FileScheduler.CompressSyncResource() : [OK] Sync Resources(SpecifyType) Builded! Count = %d......", len(objNewResList.Download))
 		}
 	}
 

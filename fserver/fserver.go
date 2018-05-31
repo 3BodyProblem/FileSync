@@ -73,7 +73,24 @@ func (pSelf *FileSyncServer) RunServer() {
 }
 
 func (pSelf *FileSyncServer) UpdateResList(refResList *ResourceList) {
+	objNewResourceList := pSelf.objResourceList
 
+	for _, objUpdateObject := range refResList.Download {
+		bFindUpdateItem := false
+
+		for i, objResNode := range objNewResourceList.Download {
+			if objResNode.TYPE == objUpdateObject.TYPE && objResNode.URI == objUpdateObject.URI {
+				bFindUpdateItem = true
+				objNewResourceList.Download[i] = objUpdateObject
+			}
+
+			if false == bFindUpdateItem {
+				objNewResourceList.Download = append(objNewResourceList.Download, objUpdateObject)
+			}
+		}
+	}
+
+	pSelf.SetResList(&objNewResourceList)
 }
 
 func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
