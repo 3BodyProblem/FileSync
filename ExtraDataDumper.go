@@ -159,8 +159,7 @@ func main() {
 
 		log.SetOutput(oLogFile)
 	}
-	log.Println("[INF] [Ver] ######### 1.0.1 ####################")
-	log.Println("[INF] [Begin] ##################################")
+	log.Println("[Begin] #########  [Ver: 1.0.1] #################")
 	/////////////// Ftp ///////////////////////////////////////////////////////////
 	var err error
 	var ftp *goftp.FTP
@@ -204,5 +203,5 @@ func main() {
 	objSHSZDetailSync := FTPFolderSync{LocalFolder: filepath.Join(sTmpFolder, "shsz_detail/"), FTPResFolder: "/shsz_detail/", FTPHandlePtr: ftp}
 	objSHSZDetailSync.FilesSync()
 
-	log.Println("[INF] [ End ] ##################################")
+	log.Println("[INF] [ End ] ###################################")
 }
