@@ -96,7 +96,6 @@ type FileScheduler struct {
 	SyncFolder       string                      // Sync File Folder
 	DataSourceConfig map[string]DataSourceConfig // Data Source Config Of Markets
 	BuildTime        int                         // Resources' Build Time
-	LastUpdateTime   time.Time                   // Last Updatetime
 	RefSyncSvr       *FileSyncServer             // File SyncSvr Pointer
 	codeRangeOfSH    RangeClass                  // Shanghai Code Range
 	codeRangeOfSZ    RangeClass                  // Shenzheng Code Range
@@ -129,7 +128,6 @@ func (pSelf *FileScheduler) Active() bool {
 	}
 	/////////////////////////// Extract Settings ///////////////////////////////////////////////////
 	log.Println("[INF] FileScheduler.Active() : [Xml.Setting] configuration file version: ", objCfg.Version)
-	pSelf.LastUpdateTime = time.Now().AddDate(-1, 0, -1)
 	pSelf.DataSourceConfig = make(map[string]DataSourceConfig)
 	for _, objSetting := range objCfg.Setting {
 		switch strings.ToLower(objSetting.Name) {
@@ -170,8 +168,8 @@ func (pSelf *FileScheduler) Active() bool {
 	if false == pSelf.RefSyncSvr.LoadResList() {
 		return false
 	}
-	pSelf.LastUpdateTime = time.Now() // update time
-	log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Resources List Builded! ......", pSelf.LastUpdateTime.Format("2006-01-02 15:04:05"))
+
+	log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Resources List Builded! ......")
 	go pSelf.ResRebuilder()
 
 	return true
@@ -294,37 +292,32 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 	}
 
 	/////////////////////////////// Judge Whether 2 Compress A New Resoures(.tar.gz) Or Not
-	if pSelf.LastUpdateTime.Year() != objBuildTime.Year() || pSelf.LastUpdateTime.Month() != objBuildTime.Month() || pSelf.LastUpdateTime.Day() != objBuildTime.Day() {
-		if objNowTime.After(objBuildTime) == true {
-			var objNewResList ResourceList
-			var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
-			log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))
-			/////////////////////// iterate data source configuration && compress quotation files ////////
-			for sResType, objDataSrcCfg := range pSelf.DataSourceConfig {
-				lstRes, bIsOk := objCompressor.XCompress(sResType, &objDataSrcCfg, pSelf.GetRangeOP(sResType))
-				if true == bIsOk {
-					/////////////// record resource path && MD5 which has been compressed
-					objNewResList.Download = append(objNewResList.Download, lstRes...)
-					log.Println("[INF] FileScheduler.compressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
-				} else {
-					log.Println("[WARN] FileScheduler.compressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
-					return false
-				}
-			}
-			/////////////////////// Set rebuild data 2 Response obj. ////////////////////////////////
-			pSelf.RefSyncSvr.SetResList(&objNewResList)
-			pSelf.LastUpdateTime = time.Now() // update time
-			sBuildedTime := pSelf.LastUpdateTime.Format("2006-01-02 15:04:05")
-			log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Sync Resources Builded! ......", sBuildedTime)
-			//////////////////////// save status 2 ./status.dat /////////////////////////////////////
-			objStatusSaver, err := os.Create("./status.dat")
-			defer objStatusSaver.Close()
-			if nil != err {
-				log.Println("[ERROR] FileScheduler.compressSyncResource() : [FAILURE] cannot save ./status.dat 2 disk :", err.Error())
+	if objNowTime.After(objBuildTime) == true {
+		var objNewResList ResourceList
+		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
+		log.Printf("[INF] FileScheduler.compressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))
+		/////////////////////// iterate data source configuration && compress quotation files ////////
+		for sResType, objDataSrcCfg := range pSelf.DataSourceConfig {
+			lstRes, bIsOk := objCompressor.XCompress(sResType, &objDataSrcCfg, pSelf.GetRangeOP(sResType))
+			if true == bIsOk {
+				/////////////// record resource path && MD5 which has been compressed
+				objNewResList.Download = append(objNewResList.Download, lstRes...)
+				log.Println("[INF] FileScheduler.compressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
 			} else {
-				nLen, _ := objStatusSaver.Write([]byte(sBuildedTime))
-				log.Printf("[INF] FileScheduler.compressSyncResource() : [OK] Write %d bytes 2 ./status.dat <--- %s", nLen, sBuildedTime)
+				log.Println("[WARN] FileScheduler.compressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
+				return false
 			}
+		}
+		/////////////////////// Set rebuild data 2 Response obj. ////////////////////////////////
+		pSelf.RefSyncSvr.SetResList(&objNewResList)
+		log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Sync Resources Builded! ......")
+		//////////////////////// save status 2 ./status.dat /////////////////////////////////////
+		objStatusSaver, err := os.Create("./status.dat")
+		if nil != err {
+			log.Println("[ERROR] FileScheduler.compressSyncResource() : [FAILURE] cannot save ./status.dat 2 disk :", err.Error())
+		} else {
+			objStatusSaver.Write([]byte(objNowTime.Format("2006-01-02 15:04:05")))
+			objStatusSaver.Close()
 		}
 	}
 
