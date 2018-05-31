@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -138,6 +139,11 @@ func (pSelf *FTPFolderSync) FilesSync() int {
 	log.Printf("[Done] FTPFolderSync::FilesSync() : Ftp File : FTP[%s] ---> LOCAL[%s], Fetch %d Files", pSelf.FTPResFolder, pSelf.LocalFolder, nFetchCount)
 
 	return nFetchCount
+}
+
+func (pSelf *FTPFolderSync) SyncByTime() int {
+
+	return pSelf.FilesSync()
 }
 
 // Program Entry Function
