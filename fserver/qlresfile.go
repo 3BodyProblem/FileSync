@@ -1,17 +1,14 @@
 /**
- * @brief		Engine Of Server
+ * @brief		qianlong ftp resource manager class
  * @author		barry
  * @date		2018/4/10
  */
 package fserver
 
 import (
-	"io/ioutil"
 	"log"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func init() {
@@ -40,37 +37,37 @@ func parseTimeStr(sTimeString string) (int, int, int, int, int, int, bool) {
 
 	nYY, err := strconv.Atoi(lstDate[0])
 	if nil != err {
-		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Year :", lstDate[0], err.Error())
+		log.Println("[WARN] parseTimeStr() : cannot parse Year :", lstDate[0], err.Error())
 		return 0, 0, 0, 0, 0, 0, false
 	}
 
 	nMM, err := strconv.Atoi(lstDate[1])
 	if nil != err {
-		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Month :", lstDate[1], err.Error())
+		log.Println("[WARN] parseTimeStr() : cannot parse Month :", lstDate[1], err.Error())
 		return 0, 0, 0, 0, 0, 0, false
 	}
 
 	nDD, err := strconv.Atoi(lstDate[2])
 	if nil != err {
-		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Day :", lstDate[0], err.Error())
+		log.Println("[WARN] parseTimeStr() : cannot parse Day :", lstDate[0], err.Error())
 		return 0, 0, 0, 0, 0, 0, false
 	}
 
 	nHH, err := strconv.Atoi(lstTime[0])
 	if nil != err {
-		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Hour :", lstTime[0], err.Error())
+		log.Println("[WARN] parseTimeStr() : cannot parse Hour :", lstTime[0], err.Error())
 		return 0, 0, 0, 0, 0, 0, false
 	}
 
 	nmm, err := strconv.Atoi(lstTime[1])
 	if nil != err {
-		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Minute :", lstTime[1], err.Error())
+		log.Println("[WARN] parseTimeStr() : cannot parse Minute :", lstTime[1], err.Error())
 		return 0, 0, 0, 0, 0, 0, false
 	}
 
 	nSS, err := strconv.Atoi(lstTime[2][:2])
 	if nil != err {
-		log.Println("[WARN] fscheduler.go.parseTimeStr() : cannot parse Second :", lstTime[2], err.Error())
+		log.Println("[WARN] parseTimeStr() : cannot parse Second :", lstTime[2], err.Error())
 		return 0, 0, 0, 0, 0, 0, false
 	}
 
