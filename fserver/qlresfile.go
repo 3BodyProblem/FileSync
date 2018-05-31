@@ -9,6 +9,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func init() {
@@ -72,4 +73,18 @@ func parseTimeStr(sTimeString string) (int, int, int, int, int, int, bool) {
 	}
 
 	return nYY, nMM, nDD, nHH, nmm, nSS, true
+}
+
+//////////// Download Qianlong FTP Resource Files ///////////////////////////////////////////
+
+func SyncQLFtpFilesInPeriodTime(nBeginTime int, nEndTime int) bool {
+	var nNowTime int = int(time.Now().Hour())*10000 + int(time.Now().Minute())*100 + int(time.Now().Second())
+
+	if nNowTime >= nBeginTime && nBeginTime <= nEndTime {
+		log.Println("call shell...............................")
+
+		return true
+	}
+
+	return false
 }
