@@ -72,6 +72,10 @@ func (pSelf *FileSyncServer) RunServer() {
 	log.Println("[INF] FileSyncServer.RunServer() : Server Has Halted.........")
 }
 
+func (pSelf *FileSyncServer) UpdateResList(refResList *ResourceList) {
+
+}
+
 func (pSelf *FileSyncServer) SetResList(refResList *ResourceList) {
 	pSelf.sResponseList = ""
 	pSelf.objResourceList = *refResList
@@ -109,7 +113,7 @@ func (pSelf *FileSyncServer) LoadResList() bool {
 			return false
 		}
 
-		log.Printf("[INF] FileSyncServer.LoadResList() : [OK] load %d bytes from ./restable.dat and resources count = %d", nLen, len(pSelf.objResourceList.Download))
+		log.Printf("[INF] FileSyncServer.LoadResList() : [OK] load %d bytes from ./restable.dat && Resources Number = %d", nLen, len(pSelf.objResourceList.Download))
 
 		return true
 	}
