@@ -178,27 +178,8 @@ func (pSelf *FileScheduler) Active() bool {
 func (pSelf *FileScheduler) ResRebuilder() {
 	for {
 		time.Sleep(time.Second * 15)
-		objNowTime := time.Now()
-		objStatusLoader, err := os.Open("./status.dat")
-		defer objStatusLoader.Close()
-		/////////////////////////////// Judge Whether 2 Compress Quotation Files
-		if nil == err {
-			bytesData := make([]byte, 20)
-			objStatusLoader.Read(bytesData)
-			nYY, nMM, nDD, _, _, _, bIsOk := parseTimeStr(string(bytesData))
-			if true == bIsOk {
-				if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
-					continue
-				}
 
-				nNowTime := objNowTime.Hour()*10000 + objNowTime.Minute()*100 + objNowTime.Second()
-				if nNowTime > pSelf.BuildTime {
-					log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Building compression of rescoures' files! ......")
-					pSelf.compressSyncResource()
-				}
-			}
-		}
-
+		pSelf.compressSyncResource() // Judge Whether 2 Compress Quotation Files
 	}
 }
 
@@ -279,13 +260,10 @@ func (pSelf *FileScheduler) compressSyncResource() bool {
 	defer objStatusLoader.Close()
 	if nil == err {
 		bytesData := make([]byte, 20)
-		nLen, _ := objStatusLoader.Read(bytesData)
-		log.Printf("[INF] FileScheduler.compressSyncResource() : [OK] Load %d bytes from ./status.dat ---> %s", nLen, string(bytesData))
+		objStatusLoader.Read(bytesData)
 		nYY, nMM, nDD, _, _, _, bIsOk := parseTimeStr(string(bytesData))
 		if true == bIsOk {
-			log.Println("[INF] FileScheduler.compressSyncResource() : date in ./status.dat ---> ", nYY, nMM, nDD)
 			if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
-				log.Println("[INF] FileScheduler.compressSyncResource() : [OK] Skip compression of rescoures' files! ......")
 				return false
 			}
 		}
