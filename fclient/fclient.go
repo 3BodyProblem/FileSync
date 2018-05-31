@@ -204,7 +204,7 @@ func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder s
 		pSelf.objSeqLock.Unlock() // Unlock
 
 		refTaskChannel <- i // WAIT 2 Engage 1 Channel Resource
-		go pSelf.fetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i, refTaskChannel)
+		go pSelf.FetchResource(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, sTargetFolder, i, refTaskChannel)
 		///////////////////////////// Check Extraction Tasks //////////////////////////////
 		for j := 0; j < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; {
 			select {
@@ -254,7 +254,7 @@ type DownloadStatus struct {
 	SeqNo     int            // Sequence No
 }
 
-func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int, objTaskChannel chan int) bool {
+func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int, objTaskChannel chan int) bool {
 	var sLocalPath string = ""
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
@@ -275,11 +275,11 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 				} else {
 					bLoop = false
 					if nTaskStatus == ST_Completed {
-						log.Printf("[INF] FileSyncClient.fetchResource() : [√] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
+						log.Printf("[INF] FileSyncClient.FetchResource() : [√] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
 					} else if nTaskStatus == ST_Ignore {
-						log.Printf("[INF] FileSyncClient.fetchResource() : [Ignore] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
+						log.Printf("[INF] FileSyncClient.FetchResource() : [Ignore] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
 					} else if nTaskStatus == ST_Error {
-						log.Printf("[WARN] FileSyncClient.fetchResource() : [×] %s:%d->%d Deleting File: => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
+						log.Printf("[WARN] FileSyncClient.FetchResource() : [×] %s:%d->%d Deleting File: => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objTaskChannel))
 						os.Remove(sLocalPath)
 					}
 
@@ -329,8 +329,8 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		for i := 0; i < 10; i++ {
 			httpRes, err = httpClient.Do(httpReq)
 			if err != nil {
-				log.Println("[ERR] FileSyncClient.fetchResource() :  error in response : ", err.Error())
-				log.Printf("[INF] FileSyncClient.fetchResource() : Download Again!!! URL=%s, MD5=%s, DownloadTimes=(%d)", sUrl, sMD5, i)
+				log.Println("[ERR] FileSyncClient.FetchResource() :  error in response : ", err.Error())
+				log.Printf("[INF] FileSyncClient.FetchResource() : Download Again!!! URL=%s, MD5=%s, DownloadTimes=(%d)", sUrl, sMD5, i)
 				continue
 			}
 
@@ -341,7 +341,7 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		defer httpRes.Body.Close()
 		sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
 		if err != nil {
-			log.Println("[WARN] FileSyncClient.fetchResource() : failed 2 fetch absolute path of program", sUrl, sMD5, sDateTime)
+			log.Println("[WARN] FileSyncClient.FetchResource() : failed 2 fetch absolute path of program", sUrl, sMD5, sDateTime)
 			return false
 		}
 
@@ -354,14 +354,14 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		}
 		err = os.MkdirAll(sMkFolder, 0711)
 		if err != nil {
-			log.Printf("[WARN] FileSyncClient.fetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
+			log.Printf("[WARN] FileSyncClient.FetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
 			return false
 		}
 
 		objDataBuf := &bytes.Buffer{}
 		_, err2 := objDataBuf.ReadFrom(httpRes.Body)
 		if err2 != nil {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot read response : ", sUrl, sMD5, sDateTime, err.Error())
+			log.Println("[ERR] FileSyncClient.FetchResource() :  cannot read response : ", sUrl, sMD5, sDateTime, err.Error())
 			return false
 		}
 
@@ -370,7 +370,7 @@ func (pSelf *FileSyncClient) fetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		defer objFile.Close()
 		_, err = io.Copy(objFile, objDataBuf)
 		if err != nil {
-			log.Println("[ERR] FileSyncClient.fetchResource() :  cannot save 2 file : ", sUri, sMD5, sDateTime, err.Error())
+			log.Println("[ERR] FileSyncClient.FetchResource() :  cannot save 2 file : ", sUri, sMD5, sDateTime, err.Error())
 			return false
 		}
 

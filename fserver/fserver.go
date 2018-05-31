@@ -36,8 +36,8 @@ type ResDownload struct {
 }
 
 type ResourceList struct {
-	XMLName  xml.Name `xml:"resource"`
-	Download []ResDownload
+	XMLName  xml.Name      `xml:"resource"`
+	Download []ResDownload `xml:"download"`
 } // Build Response Xml Structure
 
 ///////////////////////////////////// HTTP Server Engine Stucture/Class
@@ -102,7 +102,14 @@ func (pSelf *FileSyncServer) LoadResList() bool {
 		bytesData := make([]byte, 1024*1024*8)
 		nLen, _ := objResponseLoader.Read(bytesData)
 		pSelf.sResponseList = string(bytesData[:nLen])
-		log.Printf("[INF] FileSyncServer.LoadResList() : [OK] load %d bytes from ./restable.dat : ", nLen)
+
+		err = xml.Unmarshal([]byte(pSelf.sResponseList), &(pSelf.objResourceList))
+		if err != nil {
+			log.Println("[ERR] FileSyncServer.LoadResList() : [ERR] cannot unmarshal xml string in ./restable.dat : ", err.Error())
+			return false
+		}
+
+		log.Printf("[INF] FileSyncServer.LoadResList() : [OK] load %d bytes from ./restable.dat and resources count = %d", nLen, len(pSelf.objResourceList.Download))
 
 		return true
 	}
