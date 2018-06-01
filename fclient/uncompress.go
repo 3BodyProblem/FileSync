@@ -39,7 +39,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
 	}
 
-	if false == strings.Contains(sSubPath, "HKSE") {
+	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") {
 		nFileOpenMode |= os.O_APPEND
 	} else {
 		nFileOpenMode |= os.O_TRUNC
