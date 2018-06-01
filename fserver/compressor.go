@@ -233,6 +233,11 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 			hdr.Name = pILoader.GenFilePath(sRecursivePath)
 			bData, nDate, nOffset := pILoader.LoadFromFile(bytesData[nIndex:])
 			nIndex += nOffset
+
+			if nDate < 19901010 || nDate > 20301010 { // Invalid Date
+				continue
+			}
+
 			// log.Printf("pos:%d(%d) >= len:%d", nIndex, nOffset, nDataLen)
 			pTarWriter := pILoader.GrapWriter(pILoader.GenFilePath(sDestFile), nDate, sSrcFile)
 			if nil == pTarWriter {
