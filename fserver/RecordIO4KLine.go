@@ -110,7 +110,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 			nPeriodTime = 103000
 		} else if nCurTime >= 103000 && nCurTime <= 113000 {
 			nCurIndex = 1
-			nPeriodTime = 130000
+			nPeriodTime = 113000
 		} else if nCurTime > 113000 && nCurTime < 140000 {
 			nCurIndex = 2
 			nPeriodTime = 140000
