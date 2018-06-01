@@ -474,5 +474,5 @@ type WeightRecordIO struct {
 }
 
 func (pSelf *WeightRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }

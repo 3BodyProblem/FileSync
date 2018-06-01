@@ -34,7 +34,7 @@ func (pSelf *ParticipantRecordIO) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *ParticipantRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 ///////////////////////// shase_rzrq_by_date Lines ///////////////////////////////////////////
@@ -47,7 +47,7 @@ func (pSelf *Shase_rzrq_by_date) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *Shase_rzrq_by_date) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 func (pSelf *Shase_rzrq_by_date) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
@@ -100,7 +100,7 @@ func (pSelf *Sznse_rzrq_by_date) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *Sznse_rzrq_by_date) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 func (pSelf *Sznse_rzrq_by_date) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
@@ -153,7 +153,7 @@ func (pSelf *Shsz_idx_by_date) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *Shsz_idx_by_date) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 func (pSelf *Shsz_idx_by_date) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {
@@ -206,7 +206,7 @@ func (pSelf *Shsz_detail) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *Shsz_detail) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 func (pSelf *Shsz_detail) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {

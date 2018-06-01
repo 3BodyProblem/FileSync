@@ -29,7 +29,7 @@ func (pSelf *DYColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *DYColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 ///////////////////////// gn column ///////////////////////////////////////////
@@ -48,7 +48,7 @@ func (pSelf *GNColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *GNColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 ///////////////////////// hy column ///////////////////////////////////////////
@@ -67,7 +67,7 @@ func (pSelf *HYColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *HYColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
 
 ///////////////////////// zs column ///////////////////////////////////////////
@@ -86,5 +86,5 @@ func (pSelf *ZSColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *ZSColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	return bytesData, 0, len(bytesData)
+	return bytesData, 20120609, len(bytesData)
 }
