@@ -19,6 +19,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	//"runtime/pprof"
 	"strings"
 	"sync"
 	"time"
@@ -87,6 +88,14 @@ type FileSyncClient struct {
 ///////////////////////////////////// [OutterMethod]
 //  Active HTTP Client
 func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
+	/////// Performance Testing Code, as follow /////////////////
+	/*f, err := os.Create("performace_test_client.dat")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()*/
+	/////////////////////////////////////////////////////////////
 	var nEnd int = 0
 	var nBegin int = 0
 	var sCurDataType string = ""

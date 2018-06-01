@@ -80,7 +80,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 	nBytesLen := len(bytesData)
 
 	for nOffset = 0; nOffset < nBytesLen; nOffset++ {
-		if bytesData[nOffset] != bSep && (nOffset+1) != nBytesLen {
+		if bytesData[nOffset] != bSep {
 			continue
 		}
 
@@ -455,7 +455,7 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	var nBytesLen int = len(bytesData)
 
 	for nOffset = 0; nOffset < nBytesLen; nOffset++ {
-		if bytesData[nOffset] != bSep && (nOffset+1) != nBytesLen {
+		if bytesData[nOffset] != bSep {
 			continue
 		}
 
