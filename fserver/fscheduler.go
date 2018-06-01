@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -222,6 +223,14 @@ func (pSelf *FileScheduler) CompressSyncResource(sSpecifyResType string) bool {
 
 	/////////////////////////////// Judge Whether 2 Compress A New Resoures(.tar.gz) Or Not
 	if objNowTime.After(objBuildTime) == true {
+		/////// Performance Testing Code, as follow /////////////////
+		f, err := os.Create("performace_test_report.dat")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+		/////////////////////////////////////////////////////////////
 		var objNewResList ResourceList
 		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
 		log.Printf("[INF] FileScheduler.CompressSyncResource() : (BuildTime=%s) Building Sync Resources ......", time.Now().Format("2006-01-02 15:04:05"))

@@ -75,13 +75,21 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 	} // 60 minutes k-line
 
 	bNewBegin := true
-	bLines := bytes.Split(bytesData, []byte("\n"))
-	for _, bLine := range bLines {
-		nOffset += (len(bLine) + 1)
-		lstRecords := strings.Split(string(bLine), ",")
+	nLastOffset := 0
+	bSep := byte('\n')
+	nBytesLen := len(bytesData)
+
+	for nOffset = 0; nOffset < nBytesLen; nOffset++ {
+		if bytesData[nOffset] != bSep && (nOffset+1) != nBytesLen {
+			continue
+		}
+
+		lstRecords := strings.Split(string(bytesData[nLastOffset:nOffset]), ",")
+		nLastOffset = nOffset + 1
 		if len(lstRecords[0]) <= 0 {
 			continue
 		}
+
 		objMin60.Date, err = strconv.Atoi(lstRecords[0])
 		if err != nil {
 			continue
@@ -442,10 +450,19 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	var nReturnDate int = -100
 	var rstr string = ""
 	var nOffset int = 0
+	var nLastOffset int = 0
+	var bSep byte = byte('\n')
+	var nBytesLen int = len(bytesData)
 
-	for _, bLine := range bytes.Split(bytesData, []byte("\n")) {
-		nOffset += (len(bLine) + 1)
-		sFirstFields := strings.Split(string(bLine), ",")[0]
+	for nOffset = 0; nOffset < nBytesLen; nOffset++ {
+		if bytesData[nOffset] != bSep && (nOffset+1) != nBytesLen {
+			continue
+		}
+
+		sLine := string(bytesData[nLastOffset:nOffset])
+		lstRecords := strings.Split(sLine, ",")
+		nLastOffset = nOffset + 1
+		sFirstFields := lstRecords[0]
 		if len(sFirstFields) <= 0 {
 			continue
 		}
@@ -462,10 +479,10 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 			return []byte(rstr), nReturnDate, nOffset
 		}
 
-		rstr += (string(bLine) + "\n")
+		rstr += (string(sLine) + "\n")
 	}
 
-	return []byte(rstr), nReturnDate, len(bytesData)
+	return []byte(rstr), nReturnDate, nBytesLen
 }
 
 ///////////////////////// Weights Lines ///////////////////////////////////////////
