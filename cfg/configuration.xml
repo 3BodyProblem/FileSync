@@ -3,12 +3,12 @@
 	<setting name="SyncFolder" value=".\SyncFolder\" desc="the files(.zip) in this folder would be requested by client"/>
 	<setting name="BuildTime" value="00203" desc="time(HHmmss) 2 rebuild resources in syncfolder"/>
 <!--	<setting name="SSE.m1" value="D:\HQHISDATA\SSE\MIN\" desc="folder of shanghai 1 minute lines (raw data)"/>-->
-	<setting name="SSE.real_m1" value="D:\HQHISDATA\SSE\MIN\" desc="folder of shanghai 5 minute lines (raw data)"/>
+	<setting name="SSE.real_m1" value="D:\HQHISDATA\SSE\MIN\" desc="folder of shanghai 1 minute lines (raw data)"/>
 	<setting name="SSE.m60" value="D:\HQHISDATA\SSE\MIN\" desc="folder of shanghai 60 minute lines (raw data)"/>
 	<setting name="SSE.d1" value="D:\HQHISDATA\SSE\DAY" desc="folder of shanghai day lines (raw data)"/>
 	<setting name="SSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shanghai WEIGHT lines (raw data)"/>
 <!--	<setting name="SZSE.m1" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 1 minute lines (raw data)"/>-->
-	<setting name="SZSE.real_m1" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 5 minute lines (raw data)"/>
+	<setting name="SZSE.real_m1" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 1 minute lines (raw data)"/>
 	<setting name="SZSE.m60" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 60 minute lines (raw data)"/>
 	<setting name="SZSE.d1" value="D:\HQHISDATA\SZSE\DAY\" desc="folder of shenzheng day lines (raw data)"/>
 	<setting name="SZSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shenzheng WEIGHT lines (raw data)"/>

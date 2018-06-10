@@ -291,9 +291,9 @@ func (pSelf *FileScheduler) RebuildRealMinute1() {
 
 		_, bIsOk := objCompressor.XCompress("SSE.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("sse."))
 		if true == bIsOk {
-			log.Println("[INF] FileScheduler.CompressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
+			log.Println("[INF] FileScheduler.RebuildRealMinute1() : [OK] TarFile : ", objDataSrcCfg.Folder)
 		} else {
-			log.Println("[WARN] FileScheduler.CompressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
+			log.Println("[WARN] FileScheduler.RebuildRealMinute1() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
 		}
 	}
 
@@ -303,9 +303,9 @@ func (pSelf *FileScheduler) RebuildRealMinute1() {
 
 		_, bIsOk := objCompressor.XCompress("SZSE.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("szse."))
 		if true == bIsOk {
-			log.Println("[INF] FileScheduler.CompressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
+			log.Println("[INF] FileScheduler.RebuildRealMinute1() : [OK] TarFile : ", objDataSrcCfg.Folder)
 		} else {
-			log.Println("[WARN] FileScheduler.CompressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
+			log.Println("[WARN] FileScheduler.RebuildRealMinute1() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
 		}
 	}
 }
