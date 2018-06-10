@@ -79,6 +79,8 @@ type DataSourceConfig struct {
 type FileScheduler struct {
 	XmlCfgPath       string                      // Xml Configuration File Path
 	SyncFolder       string                      // Sync File Folder
+	SZRealM1Folder   string                      // Folder Of SZ real data of minute1
+	SHRealM1Folder   string                      // Folder Of SH real data of minute1
 	DataSourceConfig map[string]DataSourceConfig // Data Source Config Of Markets
 	BuildTime        int                         // Resources' Build Time
 	RefSyncSvr       *FileSyncServer             // File SyncSvr Pointer
@@ -146,6 +148,12 @@ func (pSelf *FileScheduler) Active() bool {
 		case "syncfolder":
 			pSelf.SyncFolder = strings.Replace(objSetting.Value, "\\", "/", -1)
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] SyncFolder: ", pSelf.SyncFolder)
+		case "SSE.real_m1":
+			pSelf.SHRealM1Folder = strings.Replace(objSetting.Value, "\\", "/", -1)
+			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] Real Data Folder(SH/M1): ", pSelf.SHRealM1Folder)
+		case "SZSE.real_m1":
+			pSelf.SZRealM1Folder = strings.Replace(objSetting.Value, "\\", "/", -1)
+			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] Real Data Folder(SZ/M1): ", pSelf.SZRealM1Folder)
 		case "sse.coderange":
 			var objRange RangeStruct
 			lstRangeStr := strings.Split(objSetting.Value, "~")
@@ -185,7 +193,7 @@ func (pSelf *FileScheduler) Active() bool {
 }
 
 func (pSelf *FileScheduler) ResRebuilder() {
-	for {
+	for i := 0; i < 999; i++ {
 		time.Sleep(time.Second * 15)                          // Sleep 4 a while
 		pSelf.CompressSyncResource("")                        // Judge whether 2 compress quotation files
 		if true == SyncQLFtpFilesInPeriodTime(64000, 65000) { // Sync qiulong ftp resource files (HKSE)
@@ -195,6 +203,11 @@ func (pSelf *FileScheduler) ResRebuilder() {
 		if true == SyncQLFtpFilesInPeriodTime(85000, 90000) { // Sync qiulong ftp resource files (SSE/SZSE)
 			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
+		}
+
+		if i%(4*5) == 0 {
+			i = 0
+			pSelf.RebuildRealMinute1() // Rebuild Real Data of Minute 1 Line
 		}
 	}
 }
@@ -269,4 +282,30 @@ func (pSelf *FileScheduler) CompressSyncResource(sSpecifyResType string) bool {
 	}
 
 	return true
+}
+
+func (pSelf *FileScheduler) RebuildRealMinute1() {
+	if len(pSelf.SHRealM1Folder) > 0 { // minute 1 lines of shanghai
+		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SHRealM1Folder}
+		var objDataSrcCfg = DataSourceConfig{MkID: "sse", Folder: pSelf.SHRealM1Folder}
+
+		_, bIsOk := objCompressor.XCompress("SSE.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("sse."))
+		if true == bIsOk {
+			log.Println("[INF] FileScheduler.CompressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
+		} else {
+			log.Println("[WARN] FileScheduler.CompressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
+		}
+	}
+
+	if len(pSelf.SZRealM1Folder) > 0 { // minute 1 lines of shenzheng
+		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SZRealM1Folder}
+		var objDataSrcCfg = DataSourceConfig{MkID: "szse", Folder: pSelf.SZRealM1Folder}
+
+		_, bIsOk := objCompressor.XCompress("SZSE.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("szse."))
+		if true == bIsOk {
+			log.Println("[INF] FileScheduler.CompressSyncResource() : [OK] TarFile : ", objDataSrcCfg.Folder)
+		} else {
+			log.Println("[WARN] FileScheduler.CompressSyncResource() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
+		}
+	}
 }
