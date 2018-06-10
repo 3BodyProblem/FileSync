@@ -30,15 +30,17 @@ type Uncompress struct {
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
 func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
-	nFileOpenMode := os.O_RDWR | os.O_CREATE
-	var objMapFile map[string]bool = make(map[string]bool, 1024*8)
-	var objMapFolder map[string]bool = make(map[string]bool, 1024*8)
+	var err error
+	var pTarFile *os.File = nil
+	var sLastFilePath string = ""
 	var sLocalFolder string = path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
+	var objMapFolder map[string]bool = make(map[string]bool, 1024*16)
 	// open zip file
 	if "windows" == runtime.GOOS {
 		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
 	}
 
+	nFileOpenMode := os.O_RDWR | os.O_CREATE
 	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") {
 		nFileOpenMode |= os.O_APPEND
 	} else {
@@ -93,41 +95,51 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			}
 
 			///////////////////////// Open File ///////////////////////////////////////
-			fw, err := os.OpenFile(sTargetFile, nFileOpenMode, 0644)
-			if err != nil {
-				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, sLocalFolder, err.Error())
-				return false
-			}
-			///////////////////////// Write data to file ///////////////////////////////
-			sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
-			if _, ok := objMapFile[sTargetFile]; ok {
-			} else {
-				objMapFile[sTargetFile] = true // Assign 2 Map
-				/////////////////// Check Title In File ///////////////////////
-				nFileSize, _ := fw.Seek(0, os.SEEK_END)
-				if strings.LastIndex(sTargetFile, "/MIN/") > 0 && nFileSize == 0 {
-					fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+			if sLastFilePath != sTargetFile {
+				if pTarFile != nil {
+					pTarFile.Close()
+					pTarFile = nil
 				}
-				if strings.LastIndex(sTargetFile, "/MIN5/") > 0 && nFileSize == 0 {
-					fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+
+				pTarFile, err = os.OpenFile(sTargetFile, nFileOpenMode, 0644)
+				if err != nil {
+					log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, sLocalFolder, err.Error())
+					return false
 				}
-				if strings.LastIndex(sTargetFile, "/MIN60/") > 0 && nFileSize == 0 {
-					fw.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
-				}
-				if strings.LastIndex(sTargetFile, "/DAY/") > 0 && nFileSize == 0 {
-					fw.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				sLastFilePath = sTargetFile
+				objStatus, _ := pTarFile.Stat()
+				///////////////////////// Write data to file ///////////////////////////////
+				if objStatus.Size() < 10 {
+					/////////////////// Check Title In File ///////////////////////
+					sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
+					if strings.LastIndex(sTargetFile, "/MIN/") > 0 {
+						pTarFile.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+					}
+					if strings.LastIndex(sTargetFile, "/MIN5/") > 0 {
+						pTarFile.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+					}
+					if strings.LastIndex(sTargetFile, "/MIN60/") > 0 {
+						pTarFile.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+					}
+					if strings.LastIndex(sTargetFile, "/DAY/") > 0 {
+						pTarFile.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+					}
 				}
 			}
 
-			_, err = io.Copy(fw, objTarReader)
+			_, err = io.Copy(pTarFile, objTarReader)
 			if err != nil {
 				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot write tar file, file name =", sTargetFile, sLocalFolder, err.Error())
-				fw.Close()
+				if pTarFile != nil {
+					pTarFile.Close()
+				}
 				return false
 			}
-
-			fw.Close()
 		}
+	}
+
+	if pTarFile != nil {
+		pTarFile.Close()
 	}
 
 	return true
