@@ -83,7 +83,7 @@ func (pSelf *FileSyncServer) SetSHRealMin1File(sMin1FilePath string) {
 		return
 	}
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 15 * 2)
 	err := os.Remove(sOldFile)
 	if err != nil {
 		log.Printf("[ERR] FileSyncServer.SetSHRealMin1File() : Error occur while removing (real)min1 file=%s : err=%s", sOldFile, err.Error())
@@ -98,7 +98,7 @@ func (pSelf *FileSyncServer) SetSZRealMin1File(sMin1FilePath string) {
 		return
 	}
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 15 * 2)
 	err := os.Remove(sOldFile)
 	if err != nil {
 		log.Printf("[ERR] FileSyncServer.SetSHRealMin1File() : Error occur while removing (real)min1 file=%s : err=%s", sOldFile, err.Error())
