@@ -456,13 +456,13 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 
 		if strings.Contains(pSelf.DownloadURI, "MIN1_TODAY") == true && strings.Contains(pSelf.DownloadURI, "SSE") {
 			objDownload.TYPE = "sse.real_m1"
-			objDownload.URI = "SyncFolder/SSE/MIN1_TODAY/MIN1_TODAY."
+			objDownload.URI = "SyncFolder/SSE/MIN1_TODAY/MIN1_TODAY"
 			objDownload.MD5 = "none"
 			objResourceList.Download = append(objResourceList.Download, objDownload)
 			return true
 		} else if strings.Contains(pSelf.DownloadURI, "MIN1_TODAY") == true && strings.Contains(pSelf.DownloadURI, "SZSE") {
 			objDownload.TYPE = "szse.real_m1"
-			objDownload.URI = "SyncFolder/SZSE/MIN1_TODAY/MIN1_TODAY."
+			objDownload.URI = "SyncFolder/SZSE/MIN1_TODAY/MIN1_TODAY"
 			objDownload.MD5 = "none"
 			objResourceList.Download = append(objResourceList.Download, objDownload)
 			return true
