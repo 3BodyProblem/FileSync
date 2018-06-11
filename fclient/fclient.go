@@ -171,13 +171,13 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 				objUnzip := Uncompress{TargetFolder: sTargetFolder}
 				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
 					os.Remove(objResInfo.LocalPath)
-					log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.URI)
+					log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.LocalPath)
 					os.Exit(-100)
 					return
 				}
 
 				pSelf.dumpProgress(1)
-				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d-->%d] -----------> %s (%d/%d)", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.URI, pSelf.CompleteCount, pSelf.TaskCount)
+				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d-->%d] -----------> %s (%d/%d)", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.LocalPath, pSelf.CompleteCount, pSelf.TaskCount)
 
 				pSelf.objSeqLock.Lock()
 				objDataSeq.LastSeqNo = objResInfo.SeqNo

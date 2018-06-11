@@ -273,7 +273,7 @@ func (pSelf *FileSyncServer) pickResFileName(sFileName string) string {
 			return pSelf.sSHM1RealPath
 		}
 
-		if strings.Contains(sFileName, "SSE") == true {
+		if strings.Contains(sFileName, "SZSE") == true {
 			return pSelf.sSZM1RealPath
 		}
 	}
