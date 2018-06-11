@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,8 @@ type FileSyncServer struct {
 	SyncFolder      string       // Sync File Folder
 	objResourceList ResourceList // Resources Table
 	sResponseList   string       // Resources(Res.) Table String
+	sSHM1RealPath   string       // SHL1 real data min1 file
+	sSZM1RealPath   string       // SZL1 real data min1 file
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -70,6 +73,36 @@ func (pSelf *FileSyncServer) RunServer() {
 	log.Println("[INF] FileSyncServer.RunServer() : Server Is Available [", pSelf.ServerHost, "] .........")
 	objSrv.ListenAndServe()
 	log.Println("[INF] FileSyncServer.RunServer() : Server Has Halted.........")
+}
+
+func (pSelf *FileSyncServer) SetSHRealMin1File(sMin1FilePath string) {
+	var sOldFile string = pSelf.sSHM1RealPath
+
+	pSelf.sSHM1RealPath = sMin1FilePath
+	if sOldFile == "" {
+		return
+	}
+
+	time.Sleep(time.Second * 3)
+	err := os.Remove(sOldFile)
+	if err != nil {
+		log.Printf("[ERR] FileSyncServer.SetSHRealMin1File() : Error occur while removing (real)min1 file=%s : err=%s", sOldFile, err.Error())
+	}
+}
+
+func (pSelf *FileSyncServer) SetSZRealMin1File(sMin1FilePath string) {
+	var sOldFile string = pSelf.sSZM1RealPath
+
+	pSelf.sSZM1RealPath = sMin1FilePath
+	if sOldFile == "" {
+		return
+	}
+
+	time.Sleep(time.Second * 3)
+	err := os.Remove(sOldFile)
+	if err != nil {
+		log.Printf("[ERR] FileSyncServer.SetSHRealMin1File() : Error occur while removing (real)min1 file=%s : err=%s", sOldFile, err.Error())
+	}
 }
 
 func (pSelf *FileSyncServer) UpdateResList(refResList *ResourceList) {
@@ -234,6 +267,20 @@ func (pSelf *FileSyncServer) handleLogin(resp http.ResponseWriter, req *http.Req
 	}
 }
 
+func (pSelf *FileSyncServer) pickResFileName(sFileName string) string {
+	if strings.Contains(sFileName, "MIN1_TODAY") == true {
+		if strings.Contains(sFileName, "SSE") == true {
+			return pSelf.sSHM1RealPath
+		}
+
+		if strings.Contains(sFileName, "SSE") == true {
+			return pSelf.sSZM1RealPath
+		}
+	}
+
+	return sFileName
+}
+
 // [Event] Download
 func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.Request) {
 	var sZipName string = ""
@@ -255,7 +302,7 @@ func (pSelf *FileSyncServer) handleDownload(resp http.ResponseWriter, req *http.
 
 	// Download Zip File
 	if len(req.Form["uri"]) > 0 {
-		sZipName = req.Form["uri"][0]
+		sZipName = pSelf.pickResFileName(req.Form["uri"][0])
 		resp.Header().Set("Content-Type", "application/zip")
 		resp.Header().Set("Content-Encoding", "zip")
 		resp.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", sZipName))

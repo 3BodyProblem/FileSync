@@ -44,7 +44,6 @@ func (pSelf *RealMinutes1RecordIO) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *RealMinutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
-	var nReturnDate int = -100
 	var rstr string = ""
 	var nOffset int = 0
 	var objToday time.Time = time.Now()
@@ -65,16 +64,8 @@ func (pSelf *RealMinutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, 
 			continue
 		}
 
-		if -100 == nReturnDate {
-			nReturnDate = nDate
-		}
-
-		if nReturnDate != nDate {
-			return []byte(rstr), nReturnDate, nOffset
-		}
-
 		rstr += (string(bLine) + "\n")
 	}
 
-	return []byte(rstr), nReturnDate, len(bytesData)
+	return []byte(rstr), nToday, len(bytesData)
 }

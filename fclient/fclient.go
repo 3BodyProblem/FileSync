@@ -83,6 +83,7 @@ type FileSyncClient struct {
 	objSeqLock    *sync.Mutex        // Data Seq Map Locker
 	objMapDataSeq map[string]DataSeq // Map Of Last Sequence No
 	StopFlagFile  string             // Stop Flag File Path
+	DownloadURI   string             // Resource's URI 4 Download
 }
 
 ///////////////////////////////////// [OutterMethod]
@@ -449,6 +450,27 @@ func (pSelf *FileSyncClient) login2Server() bool {
 
 // [method] list resources
 func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
+	if pSelf.DownloadURI != "" {
+		// download uri resource only
+		var objDownload ResDownload
+
+		if strings.Contains(pSelf.DownloadURI, "MIN1_TODAY") == true && strings.Contains(pSelf.DownloadURI, "SSE") {
+			objDownload.TYPE = "sse.real_m1"
+			objDownload.URI = "SyncFolder/SSE/MIN1_TODAY/MIN1_TODAY."
+			objDownload.MD5 = "none"
+			objResourceList.Download = append(objResourceList.Download, objDownload)
+			return true
+		} else if strings.Contains(pSelf.DownloadURI, "MIN1_TODAY") == true && strings.Contains(pSelf.DownloadURI, "SZSE") {
+			objDownload.TYPE = "szse.real_m1"
+			objDownload.URI = "SyncFolder/SZSE/MIN1_TODAY/MIN1_TODAY."
+			objDownload.MD5 = "none"
+			objResourceList.Download = append(objResourceList.Download, objDownload)
+			return true
+		}
+
+		return false
+	}
+
 	// generate list Url string
 	var sUrl string = fmt.Sprintf("http://%s/list", pSelf.ServerHost)
 	log.Println("[INF] FileSyncClient.fetchResList() : [GET] /list")

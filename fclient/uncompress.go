@@ -112,7 +112,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 				if objStatus.Size() < 10 {
 					/////////////////// Check Title In File ///////////////////////
 					sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
-					if strings.LastIndex(sTargetFile, "/MIN/") > 0 {
+					if strings.LastIndex(sTargetFile, "/MIN/") > 0 || strings.LastIndex(sTargetFile, "/MIN1_TODAY/") > 0 {
 						pTarFile.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 					}
 					if strings.LastIndex(sTargetFile, "/MIN5/") > 0 {

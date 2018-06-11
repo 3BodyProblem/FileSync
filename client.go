@@ -25,6 +25,7 @@ var (
 	sUncompressFolder string // Folder Which Extract Data
 	sProgressFile     string // Progress Status File
 	sStopFlagFile     string // Stop Flag File Path
+	sDownloadURI      string // URI 4 Download
 )
 
 // Package Initialization
@@ -39,9 +40,11 @@ func init() {
 	flag.StringVar(&sUncompressFolder, "dir", "./FileData/", "data folder path (default :./FileData/)")
 	flag.StringVar(&sProgressFile, "progress", "./Progress.xml", "progress file path (default :./Progress.xml)")
 	flag.StringVar(&sStopFlagFile, "stopflagfile", "", "stopflag file path (default : NULL)")
+	flag.StringVar(&sDownloadURI, "uri", "", "resource's URI 4 download (default : ''; example : SSE/MIN1_TODAY/MIN1_TODAY, SZSE/MIN1_TODAY/MIN1_TODAY)")
+
 	// [Mandatory]
-	flag.StringVar(&sAccount, "account", "", "login user name (default: '' ")
-	flag.StringVar(&sPassword, "password", "", "login password () default : '' ")
+	flag.StringVar(&sAccount, "account", "", "login user name (default: '') ")
+	flag.StringVar(&sPassword, "password", "", "login password (default : '') ")
 	flag.Parse()
 }
 
@@ -62,7 +65,7 @@ func main() {
 	log.Println("[INF] [Begin] ##################################")
 
 	for i := 0; i < 6; i++ {
-		objSyncClient := &fclient.FileSyncClient{StopFlagFile: sStopFlagFile, ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL, ProgressFile: sProgressFile, CompleteCount: 0, TaskCount: 1}
+		objSyncClient := &fclient.FileSyncClient{DownloadURI: sDownloadURI, StopFlagFile: sStopFlagFile, ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL, ProgressFile: sProgressFile, CompleteCount: 0, TaskCount: 1}
 		if true == objSyncClient.DoTasks(sUncompressFolder) {
 			break
 		}

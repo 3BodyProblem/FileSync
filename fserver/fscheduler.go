@@ -7,9 +7,11 @@ package fserver
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	//"runtime/pprof"
 	"strconv"
 	"strings"
@@ -148,10 +150,10 @@ func (pSelf *FileScheduler) Active() bool {
 		case "syncfolder":
 			pSelf.SyncFolder = strings.Replace(objSetting.Value, "\\", "/", -1)
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] SyncFolder: ", pSelf.SyncFolder)
-		case "SSE.real_m1":
+		case "sse.real_m1":
 			pSelf.SHRealM1Folder = strings.Replace(objSetting.Value, "\\", "/", -1)
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] Real Data Folder(SH/M1): ", pSelf.SHRealM1Folder)
-		case "SZSE.real_m1":
+		case "szse.real_m1":
 			pSelf.SZRealM1Folder = strings.Replace(objSetting.Value, "\\", "/", -1)
 			log.Println("[INF] FileScheduler.Active() : [Xml.Setting] Real Data Folder(SZ/M1): ", pSelf.SZRealM1Folder)
 		case "sse.coderange":
@@ -200,6 +202,7 @@ func (pSelf *FileScheduler) ResRebuilder() {
 			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
 		}
+
 		if true == SyncQLFtpFilesInPeriodTime(85000, 90000) { // Sync qiulong ftp resource files (SSE/SZSE)
 			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
@@ -285,25 +288,50 @@ func (pSelf *FileScheduler) CompressSyncResource(sSpecifyResType string) bool {
 }
 
 func (pSelf *FileScheduler) RebuildRealMinute1() {
+	var objToday time.Time = time.Now()
+	var nToday int = objToday.Year()*10000 + int(objToday.Month())*100 + objToday.Day()
+
 	if len(pSelf.SHRealM1Folder) > 0 { // minute 1 lines of shanghai
-		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SHRealM1Folder}
+		var nRetTime int = objToday.Hour()*100 + objToday.Minute()
+		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
 		var objDataSrcCfg = DataSourceConfig{MkID: "sse", Folder: pSelf.SHRealM1Folder}
 
-		_, bIsOk := objCompressor.XCompress("SSE.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("sse."))
+		_, bIsOk := objCompressor.XCompress("sse.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("sse."))
 		if true == bIsOk {
 			log.Println("[INF] FileScheduler.RebuildRealMinute1() : [OK] TarFile : ", objDataSrcCfg.Folder)
+			sSrcFile := fmt.Sprintf("%s%d", filepath.Join(pSelf.SyncFolder, "SSE/MIN1_TODAY/MIN1_TODAY."), nToday)
+			sSrcFile = strings.Replace(sSrcFile, "\\", "/", -1)
+			sDestFile := fmt.Sprintf("%s.%d", sSrcFile, nRetTime)
+
+			err := os.Rename(sSrcFile, sDestFile)
+			if err != nil {
+				log.Println("[WARN] FileScheduler.RebuildRealMinute1() : [ERROR] cannot rename file : ", sSrcFile)
+			} else {
+				pSelf.RefSyncSvr.SetSHRealMin1File(sDestFile)
+			}
 		} else {
 			log.Println("[WARN] FileScheduler.RebuildRealMinute1() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
 		}
 	}
 
 	if len(pSelf.SZRealM1Folder) > 0 { // minute 1 lines of shenzheng
-		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SZRealM1Folder}
+		var nRetTime int = objToday.Hour()*100 + objToday.Minute()
+		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
 		var objDataSrcCfg = DataSourceConfig{MkID: "szse", Folder: pSelf.SZRealM1Folder}
 
-		_, bIsOk := objCompressor.XCompress("SZSE.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("szse."))
+		_, bIsOk := objCompressor.XCompress("szse.real_m1", &objDataSrcCfg, pSelf.GetRangeOP("szse."))
 		if true == bIsOk {
 			log.Println("[INF] FileScheduler.RebuildRealMinute1() : [OK] TarFile : ", objDataSrcCfg.Folder)
+			sSrcFile := fmt.Sprintf("%s%d", filepath.Join(pSelf.SyncFolder, "SZSE/MIN1_TODAY/MIN1_TODAY."), nToday)
+			sSrcFile = strings.Replace(sSrcFile, "\\", "/", -1)
+			sDestFile := fmt.Sprintf("%s.%d", sSrcFile, nRetTime)
+
+			err := os.Rename(sSrcFile, sDestFile)
+			if err != nil {
+				log.Println("[WARN] FileScheduler.RebuildRealMinute1() : [ERROR] cannot rename file : ", sSrcFile)
+			} else {
+				pSelf.RefSyncSvr.SetSZRealMin1File(sDestFile)
+			}
 		} else {
 			log.Println("[WARN] FileScheduler.RebuildRealMinute1() : [FAILURE] TarFile : ", objDataSrcCfg.Folder)
 		}

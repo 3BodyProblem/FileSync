@@ -282,7 +282,7 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "MIN/MIN."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".real_m1") || (objDataSrc.MkID == "szse" && sDataType == ".real_m1"):
 		objRecordIO := RealMinutes1RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M1 data loader
-		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "MIN/MIN."), objDataSrc.Folder, &objRecordIO)
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "MIN1_TODAY/MIN1_TODAY."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".m5") || (objDataSrc.MkID == "szse" && sDataType == ".m5"):
 		objRecordIO := Minutes5RecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of M5 data loader
 		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "MIN5/MIN5."), objDataSrc.Folder, &objRecordIO)
