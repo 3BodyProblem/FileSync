@@ -181,8 +181,8 @@ func (pSelf *FileScheduler) Active() bool {
 		}
 	}
 	/////////////////////////// First Time 2 Build Resources
-	if true == pSelf.CompressSyncResource("") {
-		return true
+	if false == pSelf.CompressSyncResource("") {
+		return false
 	}
 	if false == pSelf.RefSyncSvr.LoadResList() {
 		return false
@@ -231,7 +231,7 @@ func (pSelf *FileScheduler) CompressSyncResource(sSpecifyResType string) bool {
 			nYY, nMM, nDD, _, _, _, bIsOk := parseTimeStr(string(bytesData))
 			if true == bIsOk {
 				if objNowTime.Year() == nYY && int(objNowTime.Month()) == nMM && int(objNowTime.Day()) == nDD {
-					return false
+					return true
 				}
 			}
 		}
