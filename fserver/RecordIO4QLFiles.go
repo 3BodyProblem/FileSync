@@ -6,6 +6,8 @@
 package fserver
 
 import (
+	"path"
+	"strconv"
 	"strings"
 )
 
@@ -86,5 +88,31 @@ func (pSelf *ZSColumnRecordIO) CodeInWhiteTable(sFileName string) bool {
 }
 
 func (pSelf *ZSColumnRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	return bytesData, 20120609, len(bytesData)
+}
+
+///////////////////////// blockinfo.ini + nnn.ini //////////////////////////////////////
+type BlkInfoRecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *BlkInfoRecordIO) CodeInWhiteTable(sFileName string) bool {
+	_, sSplitFileName := path.Split(strings.ToLower(sFileName))
+
+	if strings.Contains(sSplitFileName, "blockinfo.ini") == true && sSplitFileName[9] == '.' {
+		return true
+	}
+
+	if len(sSplitFileName) > 5 {
+		_, err := strconv.Atoi(sSplitFileName[:3])
+		if err == nil && sSplitFileName[3] == '.' {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (pSelf *BlkInfoRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	return bytesData, 20120609, len(bytesData)
 }

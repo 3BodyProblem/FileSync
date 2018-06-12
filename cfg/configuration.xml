@@ -17,10 +17,7 @@
 	<setting name="HKSE.sznse_rzrq_by_date" value=".\HKSE\sznse_rzrq_by_date\" desc="FTP:./sznse_rzrq_by_date"/>
 	<setting name="HKSE.shsz_idx_by_date" value=".\HKSE\shsz_idx_by_date\" desc="FTP:./shsz_idx_by_date"/>
 	<setting name="HKSE.shsz_detail" value=".\HKSE\shsz_detail\" desc="FTP:./shsz_detail"/>
-	<setting name="QLFILE.column_dy_bk" value="D:\ml45\syscfg\cfg\" desc="RT:qianlong file"/>
-	<setting name="QLFILE.column_gn_bk" value="D:\ml45\syscfg\cfg\" desc="RT:qianlong file"/>
-	<setting name="QLFILE.column_hy_bk" value="D:\ml45\syscfg\cfg\" desc="RT:qianlong file"/>
-	<setting name="QLFILE.column_zs_bk" value="D:\ml45\syscfg\cfg\" desc="RT:qianlong file"/>
+	<setting name="QLFILE.blockinfo_ini" value="D:\qianlong\syscfg\cfg\block\" desc="RT:qianlong file"/>
 	<setting name="SSE.coderange" value="000001~000999" desc="security id range of shanghai market"/>
 	<setting name="SSE.coderange" value="600000~609999" desc="security id range of shanghai market"/>
 	<setting name="SSE.coderange" value="510000~519999" desc="security id range of shanghai market"/>

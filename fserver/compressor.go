@@ -316,6 +316,9 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 	case objDataSrc.MkID == "qlfile" && sDataType == ".column_zs_bk":
 		objRecordIO := ZSColumnRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
 		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "zsbk."), objDataSrc.Folder, &objRecordIO)
+	case objDataSrc.MkID == "qlfile" && sDataType == ".blockinfo_ini":
+		objRecordIO := BlkInfoRecordIO{BaseRecordIO: BaseRecordIO{DataType: strings.ToLower(sResType)}} // policy of hk data loader
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "blkinfo."), objDataSrc.Folder, &objRecordIO)
 	default:
 		log.Printf("[ERR] Compressor.XCompress() : [Compressing] invalid exchange code(%s) or data type(%s)", objDataSrc.MkID, sDataType)
 		return lstRes, false
