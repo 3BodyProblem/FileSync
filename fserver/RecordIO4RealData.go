@@ -45,13 +45,14 @@ func (pSelf *RealMinutes1RecordIO) CodeInWhiteTable(sFileName string) bool {
 
 func (pSelf *RealMinutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	var rstr string = ""
-	var nOffset int = 0
 	var objToday time.Time = time.Now()
 	var nToday int = objToday.Year()*10000 + int(objToday.Month())*100 + objToday.Day()
 
-	for _, bLine := range bytes.Split(bytesData, []byte("\n")) {
-		nOffset += (len(bLine) + 1)
-		sFirstFields := strings.Split(string(bLine), ",")[0]
+	lstRecords := bytes.Split(bytesData, []byte("\n"))
+	nListLen := len(lstRecords)
+	for n := nListLen - 1; n >= 0; n-- {
+		sLine := string(lstRecords[n])
+		sFirstFields := strings.Split(sLine, ",")[0]
 		if len(sFirstFields) <= 0 {
 			continue
 		}
@@ -61,10 +62,10 @@ func (pSelf *RealMinutes1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, 
 		}
 
 		if nToday != nDate {
-			continue
+			break
 		}
 
-		rstr += (string(bLine) + "\n")
+		rstr = (sLine + "\n") + rstr
 	}
 
 	return []byte(rstr), nToday, len(bytesData)
