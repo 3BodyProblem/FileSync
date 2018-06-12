@@ -41,7 +41,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 	}
 
 	nFileOpenMode := os.O_RDWR | os.O_CREATE
-	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") {
+	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") && false == strings.Contains(sSubPath, "MIN1_TODAY") {
 		nFileOpenMode |= os.O_APPEND
 	} else {
 		nFileOpenMode |= os.O_TRUNC
