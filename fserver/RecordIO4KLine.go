@@ -451,6 +451,7 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	var rstr string = ""
 	var nOffset int = 0
 	var nLastOffset int = 0
+	var nReturnLen int = 0
 	var bSep byte = byte('\n')
 	var nBytesLen int = len(bytesData)
 
@@ -461,6 +462,7 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 
 		sLine := string(bytesData[nLastOffset:nOffset])
 		lstRecords := strings.Split(sLine, ",")
+		nReturnLen = nLastOffset
 		nLastOffset = nOffset + 1
 		sFirstFields := lstRecords[0]
 		if len(sFirstFields) <= 0 {
@@ -476,7 +478,7 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 		}
 
 		if nReturnDate != nDate {
-			return []byte(rstr), nReturnDate, nOffset
+			return []byte(rstr), nReturnDate, nReturnLen
 		}
 
 		rstr += (string(sLine) + "\n")

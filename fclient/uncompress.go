@@ -7,7 +7,6 @@ package fclient
 
 import (
 	"archive/tar"
-	//"compress/gzip"
 	"compress/zlib"
 	"io"
 	"log"
@@ -55,7 +54,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		return false
 	}
 
-	objGzipReader, err := zlib.NewReader(objZipReader) // gzip.NewReader(objZipReader)
+	objGzipReader, err := zlib.NewReader(objZipReader)
 	if err != nil {
 		log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot open gzip reader :", sZipSrcPath, err.Error())
 		return false
