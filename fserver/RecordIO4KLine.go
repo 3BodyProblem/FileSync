@@ -52,6 +52,7 @@ func (pSelf *Minutes60RecordIO) GenFilePath(sFileName string) string {
 
 func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	var err error
+	var nLastDate int = 0
 	var nOffset int = 0
 	var nReturnDate int = -100
 	var objToday time.Time = time.Now()
@@ -131,10 +132,11 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 		if nReturnDate != objMin60.Date {
 			bNewBegin = false
-			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
+			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", nLastDate, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			return []byte(rstr), nReturnDate, nOffset
 		}
 
+		nLastDate = objMin60.Date
 		if nLastIndex != nCurIndex {
 			nLastIndex = nCurIndex
 
