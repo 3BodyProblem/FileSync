@@ -203,7 +203,7 @@ func (pSelf *FileScheduler) ResRebuilder() {
 			time.Sleep(time.Second * 60 * 2)
 		}
 
-		if true == SyncQLFtpFilesInPeriodTime(85000, 90000) { // Sync qiulong ftp resource files (SSE/SZSE)
+		if true == SyncQLFtpFilesInPeriodTime(90500, 91000) { // Sync qiulong ftp resource files (SSE/SZSE)
 			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
 		}
