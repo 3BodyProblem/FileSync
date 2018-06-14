@@ -75,6 +75,10 @@ func (pSelf *FileSyncServer) RunServer() {
 	log.Println("[INF] FileSyncServer.RunServer() : Server Has Halted.........")
 }
 
+func (pSelf *FileSyncServer) GetSHRealMin1File() string {
+	return pSelf.sSHM1RealPath
+}
+
 func (pSelf *FileSyncServer) SetSHRealMin1File(sMin1FilePath string) {
 	var sOldFile string = pSelf.sSHM1RealPath
 
@@ -88,6 +92,10 @@ func (pSelf *FileSyncServer) SetSHRealMin1File(sMin1FilePath string) {
 	if err != nil {
 		log.Printf("[ERR] FileSyncServer.SetSHRealMin1File() : Error occur while removing (real)min1 file=%s : err=%s", sOldFile, err.Error())
 	}
+}
+
+func (pSelf *FileSyncServer) GetSZRealMin1File() string {
+	return pSelf.sSZM1RealPath
 }
 
 func (pSelf *FileSyncServer) SetSZRealMin1File(sMin1FilePath string) {

@@ -290,8 +290,14 @@ func (pSelf *FileScheduler) CompressSyncResource(sSpecifyResType string) bool {
 func (pSelf *FileScheduler) RebuildRealMinute1() {
 	var objToday time.Time = time.Now()
 	var nToday int = objToday.Year()*10000 + int(objToday.Month())*100 + objToday.Day()
+	var nNowT int = objToday.Hour()*10000 + objToday.Minute()*100 + objToday.Second()
+	var bInRebuildPeriod bool = false
 
-	if len(pSelf.SHRealM1Folder) > 0 { // minute 1 lines of shanghai
+	if (nNowT >= 93000 && nNowT <= 153000) || (pSelf.RefSyncSvr.GetSHRealMin1File() == "" || pSelf.RefSyncSvr.GetSZRealMin1File() == "") {
+		bInRebuildPeriod = true
+	}
+
+	if len(pSelf.SHRealM1Folder) > 0 && true == bInRebuildPeriod { // minute 1 lines of shanghai
 		var nRetTime int = objToday.Hour()*100 + objToday.Minute()
 		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
 		var objDataSrcCfg = DataSourceConfig{MkID: "sse", Folder: pSelf.SHRealM1Folder}
@@ -314,7 +320,7 @@ func (pSelf *FileScheduler) RebuildRealMinute1() {
 		}
 	}
 
-	if len(pSelf.SZRealM1Folder) > 0 { // minute 1 lines of shenzheng
+	if len(pSelf.SZRealM1Folder) > 0 && true == bInRebuildPeriod { // minute 1 lines of shenzheng
 		var nRetTime int = objToday.Hour()*100 + objToday.Minute()
 		var objCompressor Compressor = Compressor{TargetFolder: pSelf.SyncFolder}
 		var objDataSrcCfg = DataSourceConfig{MkID: "szse", Folder: pSelf.SZRealM1Folder}
