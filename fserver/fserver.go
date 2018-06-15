@@ -125,6 +125,7 @@ func (pSelf *FileSyncServer) UpdateResList(refResList *ResourceList) {
 				objNewResourceList.Download[i] = objUpdateObject
 			}
 
+			log.Println(bFindUpdateItem, objResNode.TYPE, objUpdateObject.TYPE, objResNode.URI, objUpdateObject.URI)
 			if false == bFindUpdateItem {
 				objNewResourceList.Download = append(objNewResourceList.Download, objUpdateObject)
 			}

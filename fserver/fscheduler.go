@@ -196,14 +196,14 @@ func (pSelf *FileScheduler) Active() bool {
 
 func (pSelf *FileScheduler) ResRebuilder() {
 	for i := 0; i < 999; i++ {
-		time.Sleep(time.Second * 15)                          // Sleep 4 a while
-		pSelf.CompressSyncResource("")                        // Judge whether 2 compress quotation files
-		if true == SyncQLFtpFilesInPeriodTime(64000, 65000) { // Sync qiulong ftp resource files (HKSE)
+		time.Sleep(time.Second * 15)                           // Sleep 4 a while
+		pSelf.CompressSyncResource("")                         // Judge whether 2 compress quotation files
+		if true == SyncQLFtpFilesInPeriodTime(64000, 165000) { // Sync qiulong ftp resource files (HKSE)
 			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
 		}
 
-		if true == SyncQLFtpFilesInPeriodTime(90500, 91000) { // Sync qiulong ftp resource files (SSE/SZSE)
+		if true == SyncQLFtpFilesInPeriodTime(90500, 191000) { // Sync qiulong ftp resource files (SSE/SZSE)
 			pSelf.CompressSyncResource("HKSE")
 			time.Sleep(time.Second * 60 * 2)
 		}

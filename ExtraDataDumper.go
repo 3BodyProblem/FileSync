@@ -71,7 +71,7 @@ func (pSelf *FTPFolderSync) FilesSync() int {
 		log.Printf("[INF] FTPFolderSync::FilesSync() : downloading file : %s --> %s", sFilePath, sLocalFile)
 
 		_, err = pSelf.FTPHandlePtr.Retr(sFilePath, func(r io.Reader) error {
-			fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+			fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE, 0644)
 			if err != nil {
 				log.Println("[ERR] FTPFolderSync::FilesSync() : cannot create file, file name =", sLocalFile, err.Error())
 				return nil
@@ -105,7 +105,7 @@ func (pSelf *FTPFolderSync) FilesSync() int {
 		if err != nil {
 			if os.IsNotExist(err) {
 				_, err = pSelf.FTPHandlePtr.Retr(path, func(r io.Reader) error {
-					fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+					fw, err := os.OpenFile(sLocalFile, os.O_RDWR|os.O_CREATE, 0644)
 					if err != nil {
 						log.Println("[ERR] FTPFolderSync::FilesSync() : cannot create file, file name =", sLocalFile, err.Error())
 						os.Exit(-100)
