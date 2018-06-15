@@ -117,18 +117,17 @@ func (pSelf *FileSyncServer) UpdateResList(refResList *ResourceList) {
 	objNewResourceList := pSelf.objResourceList
 
 	for _, objUpdateObject := range refResList.Download {
-		for i, objResNode := range objNewResourceList.Download {
-			var bFindUpdateItem bool = false
+		var bFindUpdateItem bool = false
 
+		for i, objResNode := range objNewResourceList.Download {
 			if objResNode.TYPE == objUpdateObject.TYPE && objResNode.URI == objUpdateObject.URI {
 				bFindUpdateItem = true
 				objNewResourceList.Download[i] = objUpdateObject
 			}
+		}
 
-			//			log.Println(bFindUpdateItem, objResNode.TYPE, objUpdateObject.TYPE, objResNode.URI, objUpdateObject.URI)
-			if false == bFindUpdateItem {
-				objNewResourceList.Download = append(objNewResourceList.Download, objUpdateObject)
-			}
+		if false == bFindUpdateItem {
+			objNewResourceList.Download = append(objNewResourceList.Download, objUpdateObject)
 		}
 	}
 
