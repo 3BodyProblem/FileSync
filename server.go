@@ -1,6 +1,6 @@
 /**
- * @brief		entry file of program
- * @detail		files sync server
+ * @brief		服务器文件入口
+ * @detail		功能： 命令行参数管理 + NetService + 行情数据文件生成服务 初始化
  * @author		barry
  * @date		2018/4/10
  */
@@ -41,7 +41,7 @@ func init() {
 
 // Program Entry Function
 func main() {
-	/////////////// Set Log File Path
+	/////////////// 设置日志输出方式
 	if true == bDumpLog {
 		oLogFile, oLogErr := os.OpenFile(sLogFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 		if oLogErr != nil {
@@ -51,7 +51,7 @@ func main() {
 		log.SetOutput(oLogFile)
 	}
 
-	//////////////// Declare && Active FileSync Server / File Scheduler
+	//////////////// 启动 网络传输服务(fserver.FileSyncServer) + 行情数据文件生成服务(fserver.FileScheduler)
 	log.Println("[INF] [Ver] ######## 1.0.1 #####################")
 	log.Println("[INF] [Begin] ##################################")
 
