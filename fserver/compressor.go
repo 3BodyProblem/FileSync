@@ -81,7 +81,7 @@ type I_Record_IO interface {
 
 type BaseRecordIO struct {
 	DataType        string
-	CodeRangeFilter I_Range_OP
+	CodeRangeFilter I_CodeRange_Filter
 	mapFileHandle   map[string]CompressHandles
 }
 
@@ -262,7 +262,7 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 
 ///////////////////////////////////// [OutterMethod] ///////////////////////////////////////////
 // [method] XCompress
-func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig, codeRange I_Range_OP) ([]ResDownload, bool) {
+func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig, codeRange I_CodeRange_Filter) ([]ResDownload, bool) {
 	var lstRes []ResDownload
 	var sDataType string = strings.ToLower(sResType[strings.Index(sResType, "."):])              // data type (d1/m1/m5/wt)
 	var sDestFolder string = filepath.Join(pSelf.TargetFolder, strings.ToUpper(objDataSrc.MkID)) // target folder of data(.tar.gz)
