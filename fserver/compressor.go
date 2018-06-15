@@ -428,7 +428,7 @@ func (pSelf *Compressor) TranslateFolder(sDestFile, sSrcFolder string, pILoader 
 	var lstRes []ResDownload                   // 带时间顺序的目标资源文件路径
 	var sMkFolder string = path.Dir(sDestFile) // 截取出需要事先创建好的目标文件的目录树
 
-	//////////////// 准备好目标目录树
+	///////////////// 准备好目标目录树
 	if "windows" == runtime.GOOS {
 		sMkFolder = sDestFile[:strings.LastIndex(sDestFile, "\\")]
 	}
