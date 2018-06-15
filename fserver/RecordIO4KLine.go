@@ -56,6 +56,9 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 	var nOffset int = 0
 	var nReturnDate int = -100
 	var objToday time.Time = time.Now()
+	var nToday int = objToday.Year()*10000 + int(objToday.Month())*100 + objToday.Day()
+	var nNowTime int = objToday.Hour()*10000 + objToday.Minute()*100 + objToday.Second()
+	var bLoadTodayData bool = false
 	var rstr string = ""
 	var lstPeriods = [4]int{103000, 130000, 140000, 150000}
 	var nLastIndex int = -1
@@ -79,6 +82,9 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 	nLastOffset := 0
 	bSep := byte('\n')
 	nBytesLen := len(bytesData)
+	if nNowTime < 70101 || nNowTime >= 220010 { // exclude current data of today in working time
+		bLoadTodayData = true
+	}
 
 	for nOffset = 0; nOffset < nBytesLen; nOffset++ {
 		if bytesData[nOffset] != bSep {
@@ -100,6 +106,11 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		subHours := objToday.Sub(objRecordDate)
 		nDays := subHours.Hours() / 24
 		if nDays > 366*3 {
+			continue
+		}
+
+		if nToday == objMin60.Date && false == bLoadTodayData {
+			bNewBegin = false
 			continue
 		}
 
