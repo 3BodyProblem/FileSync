@@ -61,6 +61,76 @@ type ResourceList struct {
 	Download []ResDownload `xml:"download"`
 }
 
+///////////////////////////////////// Cache Files Rollback Class
+
+type CacheFile struct {
+	URI          string // download url
+	LocalPath    string // File Path In Disk
+	SeqNo        int    // Sequence No
+	IsExtracted  bool   // Unziped
+	FailureCount int    // Count Of Failure Times
+}
+
+type CacheFileRollBack struct {
+	objLock            *sync.Mutex          // Locker
+	objCacheFilesTable map[string]CacheFile // Map Of Last Sequence No
+	IsNeedRollback     bool                 // Flag of rollback
+}
+
+func (pSelf *CacheFileRollBack) Initialize() bool {
+	pSelf.IsNeedRollback = false
+	pSelf.objLock = new(sync.Mutex)
+	pSelf.objCacheFilesTable = make(map[string]CacheFile)
+
+	return true
+}
+
+func (pSelf *CacheFileRollBack) NewResource(sUri, sFilePath string, nSeqNo int) {
+	var nDownloadFailureTimes int = 0
+
+	pSelf.objLock.Lock()
+	if objFileInfo, ok := pSelf.objCacheFilesTable[sUri]; ok {
+		nDownloadFailureTimes = objFileInfo.FailureCount + 1
+		objFileInfo.FailureCount = nDownloadFailureTimes
+		pSelf.objCacheFilesTable[sUri] = objFileInfo
+	} else {
+		pSelf.objCacheFilesTable[sUri] = CacheFile{URI: sUri, LocalPath: sFilePath, SeqNo: nSeqNo, IsExtracted: false, FailureCount: 0}
+	}
+	pSelf.objLock.Unlock()
+
+	log.Println(sUri, nDownloadFailureTimes)
+	if nDownloadFailureTimes > 9 {
+		pSelf.IsNeedRollback = true
+		log.Printf("[WARNING] CacheFileRollBack.NewResource() : download times out of max value: %s", sUri)
+	}
+}
+
+func (pSelf *CacheFileRollBack) MarkExtractedRes(sUri string) {
+	pSelf.objLock.Lock()
+	if objFileInfo, ok := pSelf.objCacheFilesTable[sUri]; ok {
+		objFileInfo.IsExtracted = true
+		pSelf.objCacheFilesTable[sUri] = objFileInfo
+	}
+	pSelf.objLock.Unlock()
+}
+
+func (pSelf *CacheFileRollBack) RollbackUnextractedCacheFiles() {
+	if false == pSelf.IsNeedRollback {
+		return
+	}
+
+	for k, v := range pSelf.objCacheFilesTable {
+		if false == v.IsExtracted {
+			log.Printf("[INF]CacheFileRollBack.RollbackUnextractedCacheFiles() : Deleting cache file -> %s (failure times:%d)", v.LocalPath, v.FailureCount)
+			os.Remove(v.LocalPath)
+			log.Printf("[INF]CacheFileRollBack.RollbackUnextractedCacheFiles() : File of Uri: %s, deleted!", k)
+		}
+	}
+
+	log.Println("[INF] CacheFileRollBack.RollbackUnextractedCacheFiles() : ----------------- Mission Terminated!!! ------------------")
+	os.Exit(-100)
+}
+
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
 
 type DataSeq struct {
@@ -82,6 +152,7 @@ type FileSyncClient struct {
 	CompleteCount int                // Task Complete Count
 	objSeqLock    *sync.Mutex        // Data Seq Map Locker
 	objMapDataSeq map[string]DataSeq // Map Of Last Sequence No
+	objResCache   CacheFileRollBack  // Download Resources Cache Rollback Table
 	StopFlagFile  string             // Stop Flag File Path
 	DownloadURI   string             // Resource's URI 4 Download
 }
@@ -104,6 +175,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
 	pSelf.objSeqLock = new(sync.Mutex)
 	pSelf.objMapDataSeq = make(map[string]DataSeq)
+	pSelf.objResCache.Initialize()
 	pSelf.dumpProgress(0)
 	if false == pSelf.login2Server() { ////////////////////// Login 2 Server
 		return false
@@ -135,6 +207,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	///////////////////////////// Check Tasks Status //////////////////////////////
 	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; i++ {
 		time.Sleep(1 * time.Second)
+		pSelf.objResCache.RollbackUnextractedCacheFiles()
 
 		if pSelf.StopFlagFile != "" {
 			objStopFlag, err := os.Open(pSelf.StopFlagFile)
@@ -167,6 +240,7 @@ func (pSelf *FileSyncClient) ExtractResData(sTargetFolder string, objResInfo Dow
 				time.Sleep(time.Second)
 			} else {
 				bLoop = false
+				pSelf.objResCache.MarkExtractedRes(objResInfo.URI)
 				///////////// Uncompress Resource File ///////////////////////////
 				objUnzip := Uncompress{TargetFolder: sTargetFolder}
 				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
@@ -220,9 +294,8 @@ func (pSelf *FileSyncClient) DownloadResources(sDataType string, sTargetFolder s
 			select {
 			case objStatus := <-refResFileChannel:
 				if objStatus.Status == ST_Error {
-					log.Println("[ERROR] FileSyncClient.DownloadResources() : error in downloading resource : ", objRes.TYPE, i)
-					log.Println("[ERROR] FileSyncClient.DownloadResources() : ----------------- Mission Terminated!!! ------------------")
-					os.Exit(-100)
+					log.Println("[WARN] FileSyncClient.DownloadResources() : Fix error in request & downloading resource again : ", objRes.TYPE, i)
+					go pSelf.FetchResource(objStatus.DataType, objStatus.URI, objStatus.MD5, objStatus.UPDATE, sTargetFolder, objStatus.SeqNo, refTaskChannel)
 				}
 
 				if objStatus.Status == ST_Completed {
@@ -262,16 +335,27 @@ type DownloadStatus struct {
 	Status    TaskStatusType // task status
 	LocalPath string         // File Path In Disk
 	SeqNo     int            // Sequence No
+	MD5       string         // MD5 string
+	UPDATE    string         // update time
 }
 
 func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime, sTargetFolder string, nSeqNo int, objTaskChannel chan int) bool {
 	var sLocalPath string = ""
+	var httpRes *http.Response = nil
 	var nTaskStatus TaskStatusType = ST_Error // Mission Terminated!
 	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime}
 
 	defer func() bool {
 		var refTaskChannel chan int
 		var refResFileChannel chan DownloadStatus
+
+		if pObjPanic := recover(); pObjPanic != nil {
+			log.Println("[ERR] FileSyncClient.FetchResource() : [panic] : ", sUri, pObjPanic)
+		}
+
+		if ST_Error == nTaskStatus {
+			pSelf.objResCache.NewResource(sUri, sLocalPath, nSeqNo)
+		}
 
 		for bLoop := true; true == bLoop; {
 			pSelf.objSeqLock.Lock()
@@ -305,9 +389,13 @@ func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 			pSelf.objSeqLock.Unlock()
 		}
 
-		<-refTaskChannel
-		refResFileChannel <- DownloadStatus{DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
-		return true
+		if ST_Error != nTaskStatus {
+			<-refTaskChannel
+			refResFileChannel <- DownloadStatus{MD5: sMD5, UPDATE: sDateTime, DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
+			return true
+		} else {
+			return false
+		}
 	}()
 
 	if true == objFCompare.Compare() {
@@ -318,33 +406,24 @@ func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime, sTa
 		httpClient := http.Client{
 			CheckRedirect: nil,
 			Jar:           globalCurrentCookieJar,
-			Timeout:       10 * 60 * time.Second,
+			Timeout:       0.1 * 60 * time.Second,
 			Transport: &http.Transport{
-				Dial: func(netw, addr string) (net.Conn, error) {
-					conn, err := net.DialTimeout(netw, addr, time.Second*60*10)
-					if err != nil {
-						return nil, err
-					}
-					conn.SetDeadline(time.Now().Add(time.Second * 60 * 10))
-					return conn, nil
-				},
-				// TLSHandshakeTimeout:   time.Second * 10,
-				ResponseHeaderTimeout: time.Second * 60 * 1,
-				ExpectContinueTimeout: time.Second * 60 * 1,
+				Dial: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 6 * 60 * time.Second,
+				}).Dial,
+				// TLSHandshakeTimeout:time.Second * 10,
+				// IdleConnTimeout:    time.Second * 30 * 1,
+				ResponseHeaderTimeout: time.Second * 30 * 1,
+				ExpectContinueTimeout: time.Second * 30 * 1,
 			},
 		}
 
-		var httpRes *http.Response = nil
 		httpReq, err := http.NewRequest("GET", sUrl, nil)
-		for i := 0; i < 10; i++ {
-			httpRes, err = httpClient.Do(httpReq)
-			if err != nil {
-				log.Println("[ERR] FileSyncClient.FetchResource() :  error in response : ", err.Error())
-				log.Printf("[INF] FileSyncClient.FetchResource() : Download Again!!! URL=%s, MD5=%s, DownloadTimes=(%d)", sUrl, sMD5, i)
-				continue
-			}
-
-			break
+		httpRes, err = httpClient.Do(httpReq)
+		if err != nil {
+			log.Println("[ERR] FileSyncClient.FetchResource() : error in response : ", err.Error())
+			return false
 		}
 
 		// get absolute file path

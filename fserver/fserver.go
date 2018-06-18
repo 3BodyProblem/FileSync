@@ -29,6 +29,8 @@ func init() {
 	go globalSessions.GC()
 }
 
+///////////////////////////////////// 资源下载清单类 //////////////////////////////////////
+
 /**
  * @Class 		ResDownload
  * @brief		下载记录项目荐描述结构
@@ -87,10 +89,12 @@ type FileSyncServer struct {
 func (pSelf *FileSyncServer) RunServer() {
 	objSrv := &http.Server{
 		Addr:         pSelf.ServerHost,
-		ReadTimeout:  time.Second * 60 * 2,
-		WriteTimeout: time.Second * 60 * 15,
+		ReadTimeout:  time.Second * 30 * 1,
+		WriteTimeout: time.Second * 60 * 6,
 	}
 
+	// connections keep alive
+	objSrv.SetKeepAlivesEnabled(true)
 	// Create a http server && Register Http Event
 	http.HandleFunc("/", pSelf.handleDefault)
 	http.HandleFunc("/login", pSelf.handleLogin)
