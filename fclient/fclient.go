@@ -169,20 +169,6 @@ func (pSelf *CacheFileTable) RollbackUnextractedCacheFilesAndExit() {
 ///////////////////////////////////// 资源下载同步类 /////////////////////////////
 
 /**
- * @Class 		DataSeq
- * @brief		资源下载任务序号及相关描述类
- * @author		barry
- */
-type DataSeq struct {
-	LastSeqNo               int                 // Last Sequence No
-	NoCount                 int                 // Number Of Resource
-	UnusedFlag              bool                // UnUsed Flag
-	UncompressFlag          bool                // Undo Flag
-	ParallelDownloadChannel chan int            // 下载任务栈(用来控制最大并发数)
-	ResFileChannel          chan DownloadStatus // 解压任务线
-}
-
-/**
  * @Class 		DownloadStatus
  * @brief		下载资源的位置描述类
  * @author		barry
@@ -195,6 +181,19 @@ type DownloadStatus struct {
 	SeqNo     int            // 下载任务编号
 	MD5       string         // 资源的MD5串
 	UPDATE    string         // 资源在服务端的生成时间
+}
+
+/**
+ * @Class 		DataSeq
+ * @brief		资源下载任务序号及相关描述类
+ * @author		barry
+ */
+type DownloadTask struct {
+	LastSeqNo               int                 // Last Sequence No
+	NoCount                 int                 // Number Of Resource
+	UncompressFlag          bool                // Undo Flag
+	ParallelDownloadChannel chan int            // 下载任务栈(用来控制最大并发数)
+	ResFileChannel          chan DownloadStatus // 解压任务线
 }
 
 /**
@@ -320,27 +319,39 @@ func (pSelf *FileSyncClient) DownloadResourcesByCategory(sDataType string, sTarg
 	var refResFileChannel chan DownloadStatus // 解压任务栈(每个资源类型对应一个解压任务栈)
 	/////////////////////////// 在该资源类别下，建立分派下载任务 //////////////////////////
 	for i, objRes := range lstDownloadTask {
+		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
+			log.Println("extract............1, enter loop, ", objRes.URI, nExtractedFileNum, len(lstDownloadTask))
+		}
 		//////////////// 为每个资源类型建立一个下载任务栈 ///////////
 		pSelf.objSeqLock.Lock() // Lock
+		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
+			log.Println("extract............1.1, enter loop, ", objRes.URI, nExtractedFileNum, len(lstDownloadTask))
+		}
 		if _, ok := pSelf.objMapDataSeq[objRes.TYPE]; !ok {
-			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTask), UnusedFlag: true, UncompressFlag: true}
+			pSelf.objMapDataSeq[objRes.TYPE] = DataSeq{LastSeqNo: (i - 1), ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTask), UncompressFlag: true}
 		}
 		refParallelDownloadChannel = pSelf.objMapDataSeq[objRes.TYPE].ParallelDownloadChannel
 		refResFileChannel = pSelf.objMapDataSeq[objRes.TYPE].ResFileChannel
+		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
+			log.Println("extract............1.1.1, enter loop, ", objRes.URI, nExtractedFileNum, len(lstDownloadTask))
+		}
 		pSelf.objSeqLock.Unlock() // Unlock
+		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
+			log.Println("extract............2, enter loop, ", objRes.URI, nExtractedFileNum, len(lstDownloadTask))
+		}
 		/////////////// 申请下载任务栈的一个占用名额 ///////////////
 		refParallelDownloadChannel <- i
 		/////////////// 以同步有序的方式启动下线线程 ///////////////
 		go pSelf.StartDataSafetyDownloader(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, i, refParallelDownloadChannel, refResFileChannel, pSelf.nRetryTimes)
 		////////////////////////// 等待有序的执行该类别中资源的解压任务 /////////////////////
 		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
-			log.Println("extract............, enter loop, ", objRes.URI)
+			log.Println("extract............3, enter loop, ", objRes.URI, nExtractedFileNum, len(lstDownloadTask))
 		}
 		for j := 0; j < pSelf.TTL && nExtractedFileNum < len(lstDownloadTask); {
 			select {
 			case objStatus := <-refResFileChannel:
 				if strings.Contains(objStatus.URI, "shsz_idx_by_date") {
-					log.Println("extract, grap a task............, ", objStatus.Status, objStatus.URI, objStatus.SeqNo)
+					log.Println("extract, grap a task............4, ", objStatus.Status, objStatus.URI, objStatus.SeqNo)
 				}
 
 				if objStatus.Status == ST_Completed { // 增量文件，需要解压
@@ -373,7 +384,7 @@ func (pSelf *FileSyncClient) DownloadResourcesByCategory(sDataType string, sTarg
 			}
 		}
 		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
-			log.Println("extract............, leave loop, ", objRes.URI)
+			log.Println("extract............5, leave loop, ", objRes.URI)
 		}
 	}
 
