@@ -65,9 +65,24 @@ func main() {
 	log.Println("[INF] [Begin] ##################################")
 
 	for i := 0; i < 6; i++ {
-		objSyncClient := &fclient.FileSyncClient{DownloadURI: sDownloadURI, StopFlagFile: sStopFlagFile, ServerHost: fmt.Sprintf("%s:%d", sIP, nPort), Account: sAccount, Password: sPassword, TTL: nTTL, ProgressFile: sProgressFile, CompleteCount: 0, TaskCount: 1}
-		if true == objSyncClient.DoTasks(sUncompressFolder) {
-			break
+		objSyncClient := &fclient.FileSyncClient{
+			DownloadURI:   sDownloadURI,
+			StopFlagFile:  sStopFlagFile,
+			ServerHost:    fmt.Sprintf("%s:%d", sIP, nPort),
+			Account:       sAccount,
+			Password:      sPassword,
+			TTL:           nTTL,
+			ProgressFile:  sProgressFile,
+			TaskCount:     1,
+			CompleteCount: 0,
+		}
+
+		if false == objSyncClient.Initialize() {
+			log.Println("[ERR] cannot initialize client obj.")
+		} else {
+			if true == objSyncClient.DoTasks(sUncompressFolder) {
+				break
+			}
 		}
 	}
 
