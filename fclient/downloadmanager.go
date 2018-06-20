@@ -201,43 +201,34 @@ type DownloadTask struct {
 func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
 	var nExtractedFileNum int = 0 // 在本资源文件类别中，已经解压文件的数量
 	/////////////////////////// 在该资源类别下，建立分派下载任务 //////////////////////////
-	for i, objRes := range lstDownloadTask {
-		/////////////// 申请下载任务栈的一个占用名额 ///////////////
-		pSelf.ParallelDownloadChannel <- i
-		/////////////// 以同步有序的方式启动下线线程 ///////////////
-		go pSelf.StartDataSafetyDownloader(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, i, pSelf.ParallelDownloadChannel, pSelf.ResFileChannel, pSelf.RetryTimes)
+	go pSelf.DownloadTaskDispatch(lstDownloadTask)
 
-		////////////////////////// 等待有序的执行该类别中资源的解压任务 /////////////////////
-		for j := 0; j < pSelf.TTL && nExtractedFileNum < len(lstDownloadTask); {
-			select {
-			case objStatus := <-pSelf.ResFileChannel: // 试着从解压任务栈，取一个解压任务
-				if objStatus.Status == ST_Completed { // 增量文件，需要解压
-					pSelf.ExtractResData(sTargetFolder, objStatus)
-					nExtractedFileNum += 1
-					pSelf.LastSeqNo = objStatus.SeqNo  // 更新最后一个完成的下载/解压任务的任务序号
-					pSelf.I_Downloader.DumpProgress(1) // 存盘当前任务进度
-				}
-
-				if objStatus.Status == ST_Ignore { // 存量文件，只需忽略
-					nExtractedFileNum += 1
-					pSelf.LastSeqNo = objStatus.SeqNo
-					pSelf.I_Downloader.DumpProgress(1)
-				}
-
-				if objStatus.Status == ST_Error {
-					log.Println("[WARN] FileSyncServer.DownloadResourcesByCategory() : an error occur in downloading :", objRes.URI)
-					os.Exit(-200)
-				}
-			default: // 没有解压任务时，判断是继续等待还是中断循环
-				if (len(pSelf.ParallelDownloadChannel) + len(pSelf.ResFileChannel)) == 0 {
-					j = pSelf.TTL + 10
-				}
-				time.Sleep(time.Second)
+	////////////////////////// 等待有序的执行该类别中资源的解压任务 /////////////////////
+	for j := 0; j < pSelf.TTL && nExtractedFileNum < len(lstDownloadTask); {
+		select {
+		case objStatus := <-pSelf.ResFileChannel: // 试着从解压任务栈，取一个解压任务
+			if objStatus.Status == ST_Completed { // 增量文件，需要解压
+				pSelf.ExtractResData(sTargetFolder, objStatus)
+				nExtractedFileNum += 1
+				pSelf.LastSeqNo = objStatus.SeqNo  // 更新最后一个完成的下载/解压任务的任务序号
+				pSelf.I_Downloader.DumpProgress(1) // 存盘当前任务进度
 			}
 
-			if (i + 1) < len(lstDownloadTask) {
-				break
+			if objStatus.Status == ST_Ignore { // 存量文件，只需忽略
+				nExtractedFileNum += 1
+				pSelf.LastSeqNo = objStatus.SeqNo
+				pSelf.I_Downloader.DumpProgress(1)
 			}
+
+			if objStatus.Status == ST_Error {
+				log.Println("[WARN] FileSyncServer.DownloadResourcesByCategory() : an error occur in downloading :", objStatus.URI)
+				os.Exit(-200)
+			}
+		default: // 没有解压任务时，判断是继续等待还是中断循环
+			if (len(pSelf.ParallelDownloadChannel)+len(pSelf.ResFileChannel)) == 0 && j > 60 {
+				j = pSelf.TTL + 10
+			}
+			time.Sleep(time.Second)
 		}
 	}
 
@@ -245,6 +236,20 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 }
 
 ///< ---------------------- [Pivate 方法] -----------------------------
+/**
+ * @brief		把参数的下载任务列表里的任务全部发派出去
+ * @param[in]	lstDownloadTask		下载任务列表
+ * @note		保证下载并发数量不超过任务栈的长度限定
+ */
+func (pSelf *DownloadTask) DownloadTaskDispatch(lstDownloadTask []ResDownload) {
+	for i, objRes := range lstDownloadTask {
+		/////////////// 申请下载任务栈的一个占用名额 ///////////////
+		pSelf.ParallelDownloadChannel <- i
+		/////////////// 以同步有序的方式启动下线线程 ///////////////
+		go pSelf.StartDataSafetyDownloader(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, i, pSelf.ParallelDownloadChannel, pSelf.ResFileChannel, pSelf.RetryTimes)
+	}
+}
+
 /**
  * @brief		对本地下载的资源文件进行解压
  * @param[in]	sTargetFolder		下载资源文件解压的根目录
