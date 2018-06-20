@@ -19,6 +19,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sync"
 	//"runtime/pprof"
 	"strings"
 	"time"
@@ -102,6 +103,7 @@ type FileSyncClient struct {
 	nRetryTimes      int                     // Retry Times
 	objCacheTable    CacheFileTable          // Table Of Download Resources
 	ProgressFile     string                  // Progress File Path
+	objCountLock     *sync.Mutex             // CompleteCount锁
 	TotalTaskCount   int                     // 同步任务文件总数
 	CompleteCount    int                     // 同步任务完成数
 	StopFlagFile     string                  // Stop Flag File Path
@@ -115,6 +117,7 @@ type FileSyncClient struct {
  */
 func (pSelf *FileSyncClient) Initialize() bool {
 	pSelf.nRetryTimes = 3
+	pSelf.objCountLock = new(sync.Mutex)
 	pSelf.objSyncTaskTable = make(map[string]DownloadTask)
 	pSelf.objCacheTable.Initialize()
 
@@ -173,7 +176,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	lstDownloadTableOfType := objResourceList.Download[nBegin:]
 	nDispatchTaskCount += len(lstDownloadTableOfType)
 	if len(lstDownloadTableOfType) > 0 {
-		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), lstDownloadTableOfType)
+		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), len(lstDownloadTableOfType))
 		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr: &(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType)}
 		if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
 			go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, lstDownloadTableOfType)
@@ -187,7 +190,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 
 	////////// 检查各下载任务是否完成 & 是否出现异常需要下载资源文件的回滚 //////////////
 	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TotalTaskCount; i++ {
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Second)
 		pSelf.objCacheTable.RollbackUnextractedCacheFilesAndExit() // 判断是否可以回滚下载的资源文件
 
 		if pSelf.StopFlagFile != "" { // 判断是否出现退出标识的文件
@@ -207,7 +210,6 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 
 	pSelf.DumpProgress(0)
 	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
-	time.Sleep(time.Second * 3)
 	return true
 }
 
@@ -452,7 +454,9 @@ func (pSelf *FileSyncClient) DumpProgress(nAddRef int) bool {
 		}
 	}
 
+	pSelf.objCountLock.Lock()
 	pSelf.CompleteCount = pSelf.CompleteCount + nAddRef
+	pSelf.objCountLock.Unlock()
 	objXmlProgress.Percentage.TotalTask = pSelf.CompleteCount
 	objXmlProgress.Percentage.Progress = float32(pSelf.CompleteCount) / float32(pSelf.TotalTaskCount)
 	objXmlProgress.Percentage.Update = time.Now().Format("2006-01-02 15:04:05")

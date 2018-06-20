@@ -226,6 +226,7 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 
 				if objStatus.Status == ST_Error {
 					log.Println("[WARN] FileSyncServer.DownloadResourcesByCategory() : error in downloading :", objRes.URI)
+					os.Exit(-200)
 				}
 			default: // 没有解压任务时，判断是继续等待还是中断循环
 				if (len(pSelf.ParallelDownloadChannel) + len(pSelf.ResFileChannel)) == 0 {
