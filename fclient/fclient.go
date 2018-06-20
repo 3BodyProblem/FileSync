@@ -62,11 +62,11 @@ type ResourceList struct {
 ///////////////////////////////////// 资源下载同步类 /////////////////////////////
 
 /**
- * @Class 		I_FClient
- * @brief		进度条写盘接口
+ * @Class 		I_Downloader
+ * @brief		下载管理器接口
  * @author		barry
  */
-type I_FClient interface {
+type I_Downloader interface {
 	/**
 	 * @brief		当前下载进度存盘更新
 	 * @param[in]	nAddRef		进度值，正负偏移量
@@ -82,6 +82,11 @@ type I_FClient interface {
 	 * @param[in]	sDateTime		资源文件在服务端的生成时间
 	 */
 	FetchResource(sDataType, sUri, sMD5, sDateTime string) (TaskStatusType, string)
+
+	/**
+	 * @brief		获取资源下载任务的完成度百分比
+	 */
+	GetPercentageOfTasks() float32
 }
 
 /**
@@ -97,10 +102,10 @@ type FileSyncClient struct {
 	nRetryTimes 	 int 					 // Retry Times
 	objCacheTable    CacheFileTable          // Table Of Download Resources
 	ProgressFile     string                  // Progress File Path
-	TaskCount        int                     // Task Count
+	TotalTaskCount   int                     // 同步任务文件总数
+	CompleteCount    int                     // 同步任务完成数
 	StopFlagFile     string                  // Stop Flag File Path
 	DownloadURI      string                  // Resource's URI 4 Download
-	CompleteCount    int                     // Task Complete Count
 	objSyncTaskTable map[string]DownloadTask // Map Of Last Sequence No
 }
 
@@ -144,7 +149,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	}
 
 	///////////////////// 启动下载器 & 分配下载任务 ///////////////////////
-	pSelf.TaskCount = len(objResourceList.Download)
+	pSelf.TotalTaskCount = len(objResourceList.Download)
 	for i, objRes := range objResourceList.Download {
 		if i == 0 {
 			sCurDataType = objRes.TYPE
@@ -154,7 +159,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 			nEnd = i
 			lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
 			log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s(%s) %d~%d, len=%d", sCurDataType, objRes.TYPE, nBegin, nEnd, len(lstDownloadTableOfType))
-			pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Client: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
+			pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
 			if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
 				go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:nEnd])
 			}
@@ -166,14 +171,14 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
 	if len(lstDownloadTableOfType) > 0 {
 		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), len(objResourceList.Download[nBegin:]))
-		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Client: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes,LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
+		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes,LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
 		if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
 			go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:])
 		}
 	}
 
 	////////// 检查各下载任务是否完成 & 是否出现异常需要下载资源文件的回滚 //////////////
-	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TaskCount; i++ {
+	for i := 0; i < pSelf.TTL && pSelf.CompleteCount < pSelf.TotalTaskCount; i++ {
 		time.Sleep(1 * time.Second)
 		pSelf.objCacheTable.RollbackUnextractedCacheFilesAndExit() // 判断是否可以回滚下载的资源文件
 
@@ -225,7 +230,7 @@ func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime stri
 		httpClient := http.Client{
 			CheckRedirect: nil,
 			Jar:           globalCurrentCookieJar,
-			Timeout:       0.1 * 60 * time.Second,
+			Timeout:       6 * 60 * time.Second,
 			Transport: &http.Transport{
 				Dial: (&net.Dialer{
 					Timeout:   30 * time.Second,
@@ -415,6 +420,13 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 }
 
 /**
+ * @brief		获取资源下载任务的完成度百分比
+ */
+func (pSelf *FileSyncClient) GetPercentageOfTasks() float32 {
+	return float32(pSelf.CompleteCount) / float32(pSelf.TotalTaskCount) * 100
+}
+
+/**
  * @brief		当前下载进度存盘更新
  * @param[in]	nAddRef		进度值，正负偏移量
  * @return		true		成功
@@ -432,7 +444,7 @@ func (pSelf *FileSyncClient) dumpProgress(nAddRef int) bool {
 
 	pSelf.CompleteCount = pSelf.CompleteCount + nAddRef
 	objXmlProgress.Percentage.TotalTask = pSelf.CompleteCount
-	objXmlProgress.Percentage.Progress = float32(pSelf.CompleteCount) / float32(pSelf.TaskCount)
+	objXmlProgress.Percentage.Progress = float32(pSelf.CompleteCount) / float32(pSelf.TotalTaskCount)
 	objXmlProgress.Percentage.Update = time.Now().Format("2006-01-02 15:04:05")
 
 	if sResponse, err := xml.Marshal(&objXmlProgress); err != nil {

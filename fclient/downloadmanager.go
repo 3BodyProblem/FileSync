@@ -14,18 +14,7 @@ import (
 	"time"
 )
 
-type TaskStatusType int
-
-const (
-	ST_Actived      TaskStatusType = iota // Task Status Value = 0
-	ST_Initializing                       // Task Status Value = 1
-	ST_Completed                          // Task Status Value = 2
-	ST_Ignore                             // Task Status Value = 3
-	ST_Error                              // Task Status Value = 4
-)
-
 ///////////////////////////////////// 下载资源的缓存文件管理类 //////////////////////
-
 /**
  * @Class 		I_CacheFile
  * @brief		缓存文件管理接口
@@ -159,7 +148,17 @@ func (pSelf *CacheFileTable) RollbackUnextractedCacheFilesAndExit() {
 	os.Exit(-100)
 }
 
-///////////////////////////////////// 下载任务管理类 /////////////////////////////
+//////////////////////////////////////// 下载任务管理类 /////////////////////////////
+
+const (
+	ST_Actived      TaskStatusType = iota // 任务状态0: 任务激活
+	ST_Initializing                       // 任务状态1: 初始化中
+	ST_Completed                          // 任务状态2: 下载完成
+	ST_Ignore                             // 任务状态3: 不用下载
+	ST_Error                              // 任务状态4: 任务出错
+)
+
+type TaskStatusType int 				  // 任务类型描述值
 
 /**
  * @Class 		DownloadStatus
@@ -189,7 +188,7 @@ type DownloadTask struct {
 	RetryTimes      		int                 // 某资源下载失败重试最大次数
 	ParallelDownloadChannel chan int            // 下载任务栈(用来控制最大并发数)
 	ResFileChannel          chan DownloadStatus // 解压任务线
-	I_Client				I_FClient			// 同步进度写盘接口
+	I_Downloader			I_Downloader		// 下载管理器接口
 	I_CacheMgr				I_CacheFile			// 缓存文件管理接口
 }
 
@@ -228,7 +227,7 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 				}
 
 				if objStatus.Status == ST_Ignore { // 存量文件，只需忽略
-					pSelf.I_Client.dumpProgress(1)
+					pSelf.I_Downloader.dumpProgress(1)
 					pSelf.LastSeqNo = objStatus.SeqNo
 					pSelf.UncompressFlag = false
 				}
@@ -280,8 +279,8 @@ func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo Downl
 				return
 			}
 
-			pSelf.I_Client.dumpProgress(1)
-			log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d-->%d] -----------> %s", objResInfo.DataType, objResInfo.SeqNo, pSelf.NoCount, objResInfo.LocalPath)
+			pSelf.I_Downloader.dumpProgress(1)
+			log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, seq:%d-->last:%d] -----------> {%.3f%%} %s", objResInfo.DataType, objResInfo.SeqNo, pSelf.NoCount, objResInfo.LocalPath, pSelf.I_Downloader.GetPercentageOfTasks())
 			pSelf.LastSeqNo = objResInfo.SeqNo
 			pSelf.UncompressFlag = false
 			break
@@ -310,7 +309,7 @@ func (pSelf *DownloadTask) StartDataSafetyDownloader(sDataType, sUri, sMD5, sDat
 			log.Println("download............1, ", n, sUri, nSeqNo)
 		}
 
-		if nTaskStatus, sLocalPath := pSelf.I_Client.FetchResource(sDataType, sUri, sMD5, sDateTime); nTaskStatus != ST_Error {
+		if nTaskStatus, sLocalPath := pSelf.I_Downloader.FetchResource(sDataType, sUri, sMD5, sDateTime); nTaskStatus != ST_Error {
 			if strings.Contains(sUri, "shsz_idx_by_date") {
 				log.Println("download............2, ", n, sUri, nSeqNo)
 			}

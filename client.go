@@ -73,7 +73,7 @@ func main() {
 			Password:      sPassword,
 			TTL:           nTTL,
 			ProgressFile:  sProgressFile,
-			TaskCount:     1,
+			TotalTaskCount:1,
 			CompleteCount: 0,
 		}
 
