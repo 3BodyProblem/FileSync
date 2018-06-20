@@ -21,18 +21,7 @@ import (
 	"runtime"
 	//"runtime/pprof"
 	"strings"
-	"sync"
 	"time"
-)
-
-type TaskStatusType int
-
-const (
-	ST_Actived      TaskStatusType = iota // Task Status Value = 0
-	ST_Initializing                       // Task Status Value = 1
-	ST_Completed                          // Task Status Value = 2
-	ST_Ignore                             // Task Status Value = 3
-	ST_Error                              // Task Status Value = 4
 )
 
 var (
@@ -70,316 +59,30 @@ type ResourceList struct {
 	Download []ResDownload `xml:"download"` // 可下载资源清单表
 }
 
-///////////////////////////////////// 下载资源的缓存文件管理类 //////////////////////
-
-/**
- * @Class 		CacheFile
- * @brief		某个缓存资源文件描述类
- * @author		barry
- */
-type CacheFile struct {
-	URI          string // 资源URI路径
-	LocalPath    string // 下载的本地资源文件所在路径
-	SeqNo        int    // 下载任务的序号(顺序、时序)
-	IsExtracted  bool   // 是否已经解压(已经解压的，不会再被删除/回滚)
-	FailureCount int    // 下载失败次数统计
-}
-
-/**
- * @Class 		CacheFileTable
- * @brief		缓存资源文件清单表管理类 & 支持回滚删除“未解压”的资源,以避免影响下次下载
- * @author		barry
- */
-type CacheFileTable struct {
-	objLock            *sync.Mutex          // 资源清单锁
-	objCacheFilesTable map[string]CacheFile // 资源清单表
-	IsNeedRollback     bool                 // 是否需要回滚删除资源文件标识
-}
-
-/**
- * @bruef		初始化资源文件清单管理对象
- */
-func (pSelf *CacheFileTable) Initialize() bool {
-	pSelf.IsNeedRollback = false
-	pSelf.objLock = new(sync.Mutex)
-	pSelf.objCacheFilesTable = make(map[string]CacheFile)
-
-	return true
-}
-
-/**
- * @brief		新增下载资源描述项
- * @param[in]	sUri			资源URI标识串
- * @param[in]	sFilePath		下载的资源本地路径
- * @param[in]	nSeqNo			资源下载任务序号
- */
-func (pSelf *CacheFileTable) NewResource(sUri, sFilePath string, nSeqNo int) {
-	var nDownloadFailureTimes int = 0
-
-	pSelf.objLock.Lock()
-	if objFileInfo, ok := pSelf.objCacheFilesTable[sUri]; ok {
-		nDownloadFailureTimes = objFileInfo.FailureCount + 1
-		objFileInfo.FailureCount = nDownloadFailureTimes
-		pSelf.objCacheFilesTable[sUri] = objFileInfo
-	} else {
-		pSelf.objCacheFilesTable[sUri] = CacheFile{URI: sUri, LocalPath: sFilePath, SeqNo: nSeqNo, IsExtracted: false, FailureCount: 0}
-	}
-	pSelf.objLock.Unlock()
-
-	if nDownloadFailureTimes > 9 {
-		pSelf.IsNeedRollback = true
-		log.Printf("[WARNING] CacheFileTable.NewResource() : download times out of max value: %s", sUri)
-	}
-}
-
-/**
- * @brief		标记为资源文件“已经解压”
- * @param[in]	sUri		资源URI标识串
- */
-func (pSelf *CacheFileTable) MarkExtractedRes(sUri string) {
-	pSelf.objLock.Lock()
-	if objFileInfo, ok := pSelf.objCacheFilesTable[sUri]; ok {
-		objFileInfo.IsExtracted = true
-		pSelf.objCacheFilesTable[sUri] = objFileInfo
-	}
-	pSelf.objLock.Unlock()
-}
-
-/**
- * @brief		资源删除、回滚 + 退出当前程序
- * @note 		当IsNeedRollback标识被设置为true时，进行本地缓存文件回滚
- */
-func (pSelf *CacheFileTable) RollbackUnextractedCacheFilesAndExit() {
-	if false == pSelf.IsNeedRollback {
-		return
-	}
-
-	for k, v := range pSelf.objCacheFilesTable {
-		if false == v.IsExtracted {
-			log.Printf("[INF]CacheFileTable.RollbackUnextractedCacheFilesAndExit() : Deleting cache file -> %s (failure times:%d)", v.LocalPath, v.FailureCount)
-			os.Remove(v.LocalPath)
-			log.Printf("[INF]CacheFileTable.RollbackUnextractedCacheFilesAndExit() : File of Uri: %s, deleted!", k)
-		}
-	}
-
-	log.Println("[INF] CacheFileTable.RollbackUnextractedCacheFilesAndExit() : ----------------- Mission Terminated!!! ------------------")
-	os.Exit(-100)
-}
-
-///////////////////////////////////// 下载任务管理类 /////////////////////////////
-
-/**
- * @Class 		DownloadStatus
- * @brief		下载资源的位置描述类
- * @author		barry
- */
-type DownloadStatus struct {
-	DataType  string         // 下载资源类型
-	URI       string         // 下载资源的URI标识
-	Status    TaskStatusType // 下载成功状态
-	LocalPath string         // 下载资源的本地路径
-	SeqNo     int            // 下载任务编号
-	MD5       string         // 资源的MD5串
-	UPDATE    string         // 资源在服务端的生成时间
-}
-
-/**
- * @Class 		DownloadTask
- * @brief		资源下载任务及相关描述类
- * @author		barry
- */
-type DownloadTask struct {
-	LastSeqNo               int                 // Last Sequence No
-	NoCount                 int                 // Number Of Resource
-	UncompressFlag          bool                // Undo Flag
-	ParallelDownloadChannel chan int            // 下载任务栈(用来控制最大并发数)
-	ResFileChannel          chan DownloadStatus // 解压任务线
-}
-
-/**
- * @brief		某一类资源文件（列表）的下载器
- * @param[in]	sDataType 		资源类型
- * @param[in]	sTargetFolder	资源解压根目录
- * @param[in]	lstDownloadTask	这一类资源文件的下载清单表
- * @note 		给每个下载任务标一个时序号，然后解压的时候，就按这个顺序来一个一个的解压(保证该类别内资源文件的解压顺序)
- */
-func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
-	var nExtractedFileNum int = 0 // 在本资源文件类别中，已经解压文件的数量
-	/////////////////////////// 在该资源类别下，建立分派下载任务 //////////////////////////
-	for i, objRes := range lstDownloadTask {
-		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
-			log.Println("extract............1, enter loop, ", objRes.URI, nExtractedFileNum, len(lstDownloadTask), objRes.TYPE, sDataType)
-		}
-		/////////////// 申请下载任务栈的一个占用名额 ///////////////
-		pSelf.ParallelDownloadChannel <- i
-		/////////////// 以同步有序的方式启动下线线程 ///////////////
-		go pSelf.StartDataSafetyDownloader(objRes.TYPE, objRes.URI, objRes.MD5, objRes.UPDATE, i, pSelf.ParallelDownloadChannel, pSelf.ResFileChannel, pSelf.nRetryTimes)
-		////////////////////////// 等待有序的执行该类别中资源的解压任务 /////////////////////
-		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
-			log.Println("extract............3, enter loop, ", objRes.URI, nExtractedFileNum, len(lstDownloadTask))
-		}
-		for j := 0; j < pSelf.TTL && nExtractedFileNum < len(lstDownloadTask); {
-			select {
-			case objStatus := <-pSelf.ResFileChannel:
-				if strings.Contains(objStatus.URI, "shsz_idx_by_date") {
-					log.Println("extract, grap a task............4, ", objStatus.Status, objStatus.URI, objStatus.SeqNo)
-				}
-
-				if objStatus.Status == ST_Completed { // 增量文件，需要解压
-					pSelf.ExtractResData(sTargetFolder, objStatus)
-					nExtractedFileNum += 1
-				}
-
-				if objStatus.Status == ST_Ignore { // 存量文件，只需忽略
-					pSelf.dumpProgress(1)
-					objDataSeq, _ := pSelf.objSyncTaskTable[objStatus.DataType]
-					objDataSeq.LastSeqNo = objStatus.SeqNo
-					objDataSeq.UncompressFlag = false
-					pSelf.objSyncTaskTable[objStatus.DataType] = objDataSeq
-				}
-
-				if objStatus.Status == ST_Error {
-					log.Println("[WARN] FileSyncServer.DownloadResourcesByCategory() : error in downloading :", objRes.URI)
-				}
-			default:
-				if (len(pSelf.ParallelDownloadChannel) + len(pSelf.ResFileChannel)) == 0 {
-					j = pSelf.TTL + 10
-				}
-				time.Sleep(1 * time.Second)
-			}
-
-			if (i + 1) < len(lstDownloadTask) {
-				break
-			}
-		}
-		if strings.Contains(objRes.URI, "shsz_idx_by_date") {
-			log.Println("extract............5, leave loop, ", objRes.URI)
-		}
-	}
-
-	log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Release Downloader] %s : TaskCount = %d", sDataType, len(lstDownloadTask))
-}
-
-/**
- * @brief		对本地下载的资源文件进行解压
- * @param[in]	sTargetFolder		下载资源文件解压的根目录
- * @param[in]	objResInfo			下载资源文件位置描述信息
- */
-func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo DownloadStatus) {
-	if strings.Contains(objResInfo.URI, "shsz_idx_by_date") {
-		log.Println("ExtractResData1............, ", objResInfo.Status, objResInfo.URI, objResInfo.SeqNo)
-	}
-
-	for bLoop := true; true == bLoop; {
-		if objDataSeq, ok := pSelf.objSyncTaskTable[objResInfo.DataType]; ok {
-			if (objDataSeq.LastSeqNo + 1) < objResInfo.SeqNo {
-				log.Println("ExtractResData () : ..............................., ", objResInfo.URI, objDataSeq.LastSeqNo, objResInfo.SeqNo)
-				time.Sleep(time.Second)
-			} else {
-				bLoop = false
-				pSelf.objCacheTable.MarkExtractedRes(objResInfo.URI)
-				///////////// Uncompress Resource File ///////////////////////////
-				objUnzip := Uncompress{TargetFolder: sTargetFolder}
-				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
-					os.Remove(objResInfo.LocalPath)
-					log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.LocalPath)
-					os.Exit(-100)
-					return
-				}
-
-				pSelf.dumpProgress(1)
-				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s, %d-->%d] -----------> %s (%d/%d)", objResInfo.DataType, objResInfo.SeqNo, objDataSeq.NoCount, objResInfo.LocalPath, pSelf.CompleteCount, pSelf.TaskCount)
-
-				objDataSeq.LastSeqNo = objResInfo.SeqNo
-				objDataSeq.UncompressFlag = false
-				pSelf.objSyncTaskTable[objResInfo.DataType] = objDataSeq
-			}
-
-			continue
-		}
-
-	}
-
-	if strings.Contains(objResInfo.URI, "shsz_idx_by_date") {
-		log.Println("ExtractResData2............, ", objResInfo.Status, objResInfo.URI, objResInfo.SeqNo)
-	}
-}
-
-/**
- * @brief		带重试功能的资源文件下载线程
- * @param[in]	sDataType 		资源文件类型
- * @param[in]	sUri			资源URI标识
- * @param[in]	sMD5			资源文件MD5校验码
- * @param[in]	sDateTime		服务端资源文件生成时间
- * @param[in]	nSeqNo			本次下载任务的任务编号
- * @param[in]	objParallelDownloadChannel	下载任务的同步管理
- * @param[in]	nRetryTimes		下载失败重试的最大次数
- * @note		如果多次重试下载后，还是失败，就是中断程序!
- */
-func (pSelf *DownloadTask) StartDataSafetyDownloader(sDataType, sUri, sMD5, sDateTime string, nSeqNo int, objParallelDownloadChannel chan int, objResFileChannel chan DownloadStatus, nRetryTimes int) {
-	for n := 0; n < nRetryTimes; n++ {
-		if strings.Contains(sUri, "shsz_idx_by_date") {
-			log.Println("download............1, ", n, sUri, nSeqNo)
-		}
-
-		if nTaskStatus, sLocalPath := pSelf.FetchResource(sDataType, sUri, sMD5, sDateTime); nTaskStatus != ST_Error {
-			if strings.Contains(sUri, "shsz_idx_by_date") {
-				log.Println("download............2, ", n, sUri, nSeqNo)
-			}
-			pSelf.objCacheTable.NewResource(sUri, sLocalPath, nSeqNo)
-			if strings.Contains(sUri, "shsz_idx_by_date") {
-				log.Println("download............3, ", n, sUri, nSeqNo)
-			}
-
-			for bLoop := true; true == bLoop; {
-				if objDataSeq, ok := pSelf.objSyncTaskTable[sDataType]; ok {
-					if (objDataSeq.LastSeqNo + 1) < nSeqNo {
-						time.Sleep(time.Second)
-						if strings.Contains(sUri, "shsz_idx_by_date") {
-							log.Println("download............4, ", n, sUri, objDataSeq.LastSeqNo, nSeqNo)
-						}
-					} else {
-						bLoop = false
-						if nTaskStatus == ST_Completed {
-							log.Printf("[INF] FileSyncClient.StartDataSafetyDownloader() : [√] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
-						} else if nTaskStatus == ST_Ignore {
-							log.Printf("[INF] FileSyncClient.StartDataSafetyDownloader() : [Ignore] %s:%d->%d => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
-						} else if nTaskStatus == ST_Error {
-							log.Printf("[WARN] FileSyncClient.StartDataSafetyDownloader() : [×] %s:%d->%d Deleting File: => %s (Running:%d)", sDataType, objDataSeq.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
-							os.Remove(sLocalPath)
-						}
-
-						objDataSeq.UncompressFlag = true
-						pSelf.objSyncTaskTable[sDataType] = objDataSeq
-					}
-				}
-			}
-
-			if strings.Contains(sUri, "shsz_idx_by_date") {
-				log.Println("download............5, ", n, sUri, nSeqNo)
-			}
-			<-objParallelDownloadChannel
-			if strings.Contains(sUri, "shsz_idx_by_date") {
-				log.Println("download............6, ", n, sUri, nSeqNo)
-			}
-			objResFileChannel <- DownloadStatus{MD5: sMD5, UPDATE: sDateTime, DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // Mission Finished!
-			if strings.Contains(sUri, "shsz_idx_by_date") {
-				log.Println("download............7, ", n, sUri, nSeqNo)
-			}
-
-			return
-		} else {
-			pSelf.objCacheTable.NewResource(sUri, sLocalPath, nSeqNo)
-			log.Printf("[WARN] FileSyncClient.StartDataSafetyDownloader() : failed 2 download, [RetryTimes=%d] %s:%d => %s", n+1, sDataType, nSeqNo, sUri)
-			time.Sleep(time.Second * 1)
-		}
-	}
-
-	pSelf.objCacheTable.IsNeedRollback = true
-	pSelf.objCacheTable.RollbackUnextractedCacheFilesAndExit()
-}
-
 ///////////////////////////////////// 资源下载同步类 /////////////////////////////
+
+/**
+ * @Class 		I_FClient
+ * @brief		进度条写盘接口
+ * @author		barry
+ */
+type I_FClient interface {
+	/**
+	 * @brief		当前下载进度存盘更新
+	 * @param[in]	nAddRef		进度值，正负偏移量
+	 * @return		true		成功
+	 */
+	dumpProgress(nAddRef int) bool
+
+	/**
+	 * @brief		下载资源文件
+	 * @param[in]	sDataType 		资源文件类型
+	 * @param[in]	sUri			资源文件URI标识
+	 * @param[in]	sMD5			资源文件MD5串
+	 * @param[in]	sDateTime		资源文件在服务端的生成时间
+	 */
+	FetchResource(sDataType, sUri, sMD5, sDateTime string) (TaskStatusType, string)
+}
 
 /**
  * @Class 		FileSyncClient
@@ -391,9 +94,9 @@ type FileSyncClient struct {
 	Account          string                  // Server Login Username
 	Password         string                  // Server Login Password
 	TTL              int                     // Time To Live
+	nRetryTimes 	 int 					 // Retry Times
 	objCacheTable    CacheFileTable          // Table Of Download Resources
 	ProgressFile     string                  // Progress File Path
-	nRetryTimes      int                     // Retry Times of download
 	TaskCount        int                     // Task Count
 	StopFlagFile     string                  // Stop Flag File Path
 	DownloadURI      string                  // Resource's URI 4 Download
@@ -451,8 +154,10 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 			nEnd = i
 			lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
 			log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s(%s) %d~%d, len=%d", sCurDataType, objRes.TYPE, nBegin, nEnd, len(lstDownloadTableOfType))
-			pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
-			go pSelf.objSyncTaskTable[sCurDataType].DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:nEnd])
+			pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Client: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
+			if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
+				go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:nEnd])
+			}
 			nBegin = i
 			sCurDataType = objRes.TYPE
 		}
@@ -461,8 +166,10 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
 	if len(lstDownloadTableOfType) > 0 {
 		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), len(objResourceList.Download[nBegin:]))
-		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
-		go pSelf.objSyncTaskTable[sCurDataType].DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:])
+		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Client: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes,LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
+		if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
+			go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:])
+		}
 	}
 
 	////////// 检查各下载任务是否完成 & 是否出现异常需要下载资源文件的回滚 //////////////
@@ -491,7 +198,6 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	return true
 }
 
-///< ---------------------- [Public 方法] -----------------------------
 /**
  * @brief		下载资源文件
  * @param[in]	sDataType 		资源文件类型
@@ -711,6 +417,7 @@ func (pSelf *FileSyncClient) fetchResList(objResourceList *ResourceList) bool {
 /**
  * @brief		当前下载进度存盘更新
  * @param[in]	nAddRef		进度值，正负偏移量
+ * @return		true		成功
  */
 func (pSelf *FileSyncClient) dumpProgress(nAddRef int) bool {
 	var objXmlProgress struct {
