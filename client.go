@@ -34,7 +34,7 @@ func init() {
 	// [Optional]
 	flag.StringVar(&sIP, "ip", "127.0.0.1", "file sync server's ip address (default:0.0.0.0)")
 	flag.IntVar(&nPort, "port", 31256, "file sync server's listen port (default:31256)")
-	flag.IntVar(&nTTL, "ttl", 3600*6, " (time to live (default: 3600 * 6 seconds)")
+	flag.IntVar(&nTTL, "ttl", 3600*1, " (time to live (default: 3600 * 1 seconds)")
 	flag.StringVar(&sLogFile, "logpath", "./Client.log", "log file's path (default:./Client.log)")
 	flag.BoolVar(&bDumpLog, "dumplog", false, "a switch 4 log dump (default:false)")
 	flag.StringVar(&sUncompressFolder, "dir", "./FileData/", "data folder path (default :./FileData/)")
@@ -66,15 +66,15 @@ func main() {
 
 	for i := 0; i < 6; i++ {
 		objSyncClient := &fclient.FileSyncClient{
-			DownloadURI:   sDownloadURI,
-			StopFlagFile:  sStopFlagFile,
-			ServerHost:    fmt.Sprintf("%s:%d", sIP, nPort),
-			Account:       sAccount,
-			Password:      sPassword,
-			TTL:           nTTL,
-			ProgressFile:  sProgressFile,
-			TotalTaskCount:1,
-			CompleteCount: 0,
+			DownloadURI:    sDownloadURI,
+			StopFlagFile:   sStopFlagFile,
+			ServerHost:     fmt.Sprintf("%s:%d", sIP, nPort),
+			Account:        sAccount,
+			Password:       sPassword,
+			TTL:            nTTL,
+			ProgressFile:   sProgressFile,
+			TotalTaskCount: 1,
+			CompleteCount:  0,
 		}
 
 		if false == objSyncClient.Initialize() {

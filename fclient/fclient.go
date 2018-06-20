@@ -99,7 +99,7 @@ type FileSyncClient struct {
 	Account          string                  // Server Login Username
 	Password         string                  // Server Login Password
 	TTL              int                     // Time To Live
-	nRetryTimes 	 int 					 // Retry Times
+	nRetryTimes      int                     // Retry Times
 	objCacheTable    CacheFileTable          // Table Of Download Resources
 	ProgressFile     string                  // Progress File Path
 	TotalTaskCount   int                     // 同步任务文件总数
@@ -129,7 +129,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	var nBegin, nEnd int = 0, 0
 	var sCurDataType string = ""
 	var objResourceList ResourceList // uri list object
-	var nMaxDownloadThread int = 5   // 下载任务栈长度(并发下载数)
+	var nMaxDownloadThread int = 2   // 下载任务栈长度(并发下载数)
 	var nMaxExtractThread int = 5    // 解压任务栈长度(并发下载数)
 	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
 	/////// 本程序进行性能测试的代码，用于找出哪个函数最慢 /////////////////
@@ -159,7 +159,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 			nEnd = i
 			lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
 			log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s(%s) %d~%d, len=%d", sCurDataType, objRes.TYPE, nBegin, nEnd, len(lstDownloadTableOfType))
-			pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
+			pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr: &(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType)}
 			if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
 				go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:nEnd])
 			}
@@ -171,7 +171,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
 	if len(lstDownloadTableOfType) > 0 {
 		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), len(objResourceList.Download[nBegin:]))
-		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr:&(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes,LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType), UncompressFlag: true}
+		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr: &(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType)}
 		if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
 			go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:])
 		}
@@ -219,6 +219,8 @@ func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime stri
 
 	defer func() {
 		if pObjPanic := recover(); pObjPanic != nil { // 异常恢复，以至于程序不会异常中断
+			sLocalPath = ""
+			nTaskStatus = ST_Error
 			log.Println("[ERR] FileSyncClient.FetchResource() : [panic] exception --> ", sUri, pObjPanic)
 			return
 		}
