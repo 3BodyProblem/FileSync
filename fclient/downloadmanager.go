@@ -214,12 +214,14 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 				if objStatus.Status == ST_Completed { // 增量文件，需要解压
 					pSelf.ExtractResData(sTargetFolder, objStatus)
 					nExtractedFileNum += 1
+					pSelf.LastSeqNo = objStatus.SeqNo  // 更新最后一个完成的下载/解压任务的任务序号
+					pSelf.I_Downloader.DumpProgress(1) // 存盘当前任务进度
 				}
 
 				if objStatus.Status == ST_Ignore { // 存量文件，只需忽略
-					pSelf.I_Downloader.DumpProgress(1)
 					nExtractedFileNum += 1
 					pSelf.LastSeqNo = objStatus.SeqNo
+					pSelf.I_Downloader.DumpProgress(1)
 				}
 
 				if objStatus.Status == ST_Error {
@@ -262,9 +264,7 @@ func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo Downl
 				return
 			}
 
-			pSelf.I_Downloader.DumpProgress(1) // 存盘当前任务进度
 			log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s:%.1f%%, seq:%d-->last:%d] ---> %s", objResInfo.DataType, pSelf.I_Downloader.GetPercentageOfTasks(), objResInfo.SeqNo, pSelf.NoCount, objResInfo.URI)
-			pSelf.LastSeqNo = objResInfo.SeqNo // 更新最后一个完成的下载/解压任务的任务序号
 			break
 		}
 	}
@@ -291,11 +291,11 @@ func (pSelf *DownloadTask) StartDataSafetyDownloader(sDataType, sUri, sMD5, sDat
 					time.Sleep(time.Second)
 				} else {
 					if nTaskStatus == ST_Completed {
-						log.Printf("[INF] FileSyncClient.StartDataSafetyDownloader() : [√] %s:%d->%d => %s (Running:%d)", sDataType, pSelf.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
+						log.Printf("[INF] FileSyncClient.StartDataSafetyDownloader() : [√] %s:%.1f%%, %d->%d => %s (Running:%d)", sDataType, pSelf.I_Downloader.GetPercentageOfTasks(), pSelf.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
 					} else if nTaskStatus == ST_Ignore {
-						log.Printf("[INF] FileSyncClient.StartDataSafetyDownloader() : [Ignore] %s:%d->%d => %s (Running:%d)", sDataType, pSelf.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
+						log.Printf("[INF] FileSyncClient.StartDataSafetyDownloader() : [Ignore] %s:%.1f%%, %d->%d => %s (Running:%d)", sDataType, pSelf.I_Downloader.GetPercentageOfTasks(), pSelf.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
 					} else if nTaskStatus == ST_Error {
-						log.Printf("[WARN] FileSyncClient.StartDataSafetyDownloader() : [×] %s:%d->%d Deleting File: => %s (Running:%d)", sDataType, pSelf.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
+						log.Printf("[WARN] FileSyncClient.StartDataSafetyDownloader() : [×] %s:%.1f%%, %d->%d Deleting File: => %s (Running:%d)", sDataType, pSelf.I_Downloader.GetPercentageOfTasks(), pSelf.LastSeqNo, nSeqNo, sUri, len(objParallelDownloadChannel))
 						os.Remove(sLocalPath)
 					}
 					break
