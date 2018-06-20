@@ -72,7 +72,7 @@ type I_Downloader interface {
 	 * @param[in]	nAddRef		进度值，正负偏移量
 	 * @return		true		成功
 	 */
-	dumpProgress(nAddRef int) bool
+	DumpProgress(nAddRef int) bool
 
 	/**
 	 * @brief		下载资源文件
@@ -139,7 +139,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	}
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()*/
-	pSelf.dumpProgress(0)
+	pSelf.DumpProgress(0)
 	if false == pSelf.login2Server() { ////////////////////// 登录到服务器
 		return false
 	}
@@ -197,7 +197,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 		}
 	}
 
-	pSelf.dumpProgress(0)
+	pSelf.DumpProgress(0)
 	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
 	time.Sleep(time.Second * 3)
 	return true
@@ -433,7 +433,7 @@ func (pSelf *FileSyncClient) GetPercentageOfTasks() float32 {
  * @param[in]	nAddRef		进度值，正负偏移量
  * @return		true		成功
  */
-func (pSelf *FileSyncClient) dumpProgress(nAddRef int) bool {
+func (pSelf *FileSyncClient) DumpProgress(nAddRef int) bool {
 	var objXmlProgress struct {
 		XMLName    xml.Name `xml:"progress"`
 		Percentage struct {
@@ -450,12 +450,12 @@ func (pSelf *FileSyncClient) dumpProgress(nAddRef int) bool {
 	objXmlProgress.Percentage.Update = time.Now().Format("2006-01-02 15:04:05")
 
 	if sResponse, err := xml.Marshal(&objXmlProgress); err != nil {
-		log.Println("[ERR] FileSyncClient.dumpProgress() : cannot marshal xml object 2 string : ", err.Error())
+		log.Println("[ERR] FileSyncClient.DumpProgress() : cannot marshal xml object 2 string : ", err.Error())
 	} else {
 		objFile, err := os.Create(pSelf.ProgressFile)
 		defer objFile.Close()
 		if err != nil {
-			log.Println("[ERR] FileSyncClient.dumpProgress() : cannot create progress file : ", pSelf.ProgressFile, err.Error())
+			log.Println("[ERR] FileSyncClient.DumpProgress() : cannot create progress file : ", pSelf.ProgressFile, err.Error())
 			return false
 		}
 
