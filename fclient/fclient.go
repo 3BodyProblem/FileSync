@@ -131,6 +131,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	var objResourceList ResourceList // uri list object
 	var nMaxDownloadThread int = 2   // 下载任务栈长度(并发下载数)
 	var nMaxExtractThread int = 5    // 解压任务栈长度(并发下载数)
+	var nDispatchTaskCount int = 0
 	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
 	/////// 本程序进行性能测试的代码，用于找出哪个函数最慢 /////////////////
 	/*f, err := os.Create("performace_test_client.dat")
@@ -158,23 +159,30 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 		if sCurDataType != objRes.TYPE {
 			nEnd = i
 			lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
+			nDispatchTaskCount += len(lstDownloadTableOfType)
 			log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s(%s) %d~%d, len=%d", sCurDataType, objRes.TYPE, nBegin, nEnd, len(lstDownloadTableOfType))
 			pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr: &(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType)}
 			if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
-				go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:nEnd])
+				go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, lstDownloadTableOfType)
 			}
 			nBegin = i
 			sCurDataType = objRes.TYPE
 		}
 	}
 
-	lstDownloadTableOfType := objResourceList.Download[nBegin:nEnd]
+	lstDownloadTableOfType := objResourceList.Download[nBegin:]
+	nDispatchTaskCount += len(lstDownloadTableOfType)
 	if len(lstDownloadTableOfType) > 0 {
-		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), len(objResourceList.Download[nBegin:]))
+		log.Printf("[INF] FileSyncClient.DoTasks() : DataType: %s %d~%d, len=%d", sCurDataType, nBegin, len(objResourceList.Download), lstDownloadTableOfType)
 		pSelf.objSyncTaskTable[sCurDataType] = DownloadTask{I_CacheMgr: &(pSelf.objCacheTable), I_Downloader: pSelf, TTL: pSelf.TTL, RetryTimes: pSelf.nRetryTimes, LastSeqNo: -1, ParallelDownloadChannel: make(chan int, nMaxDownloadThread), ResFileChannel: make(chan DownloadStatus, nMaxExtractThread), NoCount: len(lstDownloadTableOfType)}
 		if objDownloadTask, ok := pSelf.objSyncTaskTable[sCurDataType]; ok {
-			go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, objResourceList.Download[nBegin:])
+			go objDownloadTask.DownloadResourcesByCategory(sCurDataType, sTargetFolder, lstDownloadTableOfType)
 		}
+	}
+
+	if nDispatchTaskCount != pSelf.TotalTaskCount {
+		log.Println("[ERR] FileSyncServer.DoTasks() : not all tasks has been dispatched : ", nDispatchTaskCount, pSelf.TotalTaskCount)
+		return false
 	}
 
 	////////// 检查各下载任务是否完成 & 是否出现异常需要下载资源文件的回滚 //////////////
