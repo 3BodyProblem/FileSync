@@ -98,7 +98,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		}
 
 		objMin60.Date, err = strconv.Atoi(lstRecords[0])
-		if err != nil {
+		if err != nil || 20180618 == objMin60.Date {
 			continue
 		}
 
@@ -482,7 +482,7 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 			continue
 		}
 		nDate, err := strconv.Atoi(sFirstFields)
-		if err != nil {
+		if err != nil || 20180618 == nDate {
 			continue
 		}
 
