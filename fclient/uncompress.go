@@ -1,5 +1,5 @@
 /**
- * @brief		File's Comparison Tools
+ * @brief		File's Uncompression Tools
  * @author		barry
  * @date		2018/4/10
  */
