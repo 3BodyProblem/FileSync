@@ -116,7 +116,7 @@ type FileSyncClient struct {
  * @brief		初始化下载客户端
  */
 func (pSelf *FileSyncClient) Initialize() bool {
-	pSelf.nRetryTimes = 3
+	pSelf.nRetryTimes = 6 // Retry Times
 	pSelf.objCountLock = new(sync.Mutex)
 	pSelf.objSyncTaskTable = make(map[string]DownloadTask)
 	pSelf.objCacheTable.Initialize()

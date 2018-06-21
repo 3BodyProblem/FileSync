@@ -314,7 +314,7 @@ func (pSelf *DownloadTask) StartDataSafetyDownloader(sDataType, sUri, sMD5, sDat
 		} else {
 			pSelf.I_CacheMgr.NewResource(sUri, sLocalPath, nSeqNo)
 			log.Printf("[ERR] FileSyncClient.StartDataSafetyDownloader() : [×]-[ReloadTimes=%d] %s:%d->%d => %s", n+1, sDataType, pSelf.LastSeqNo, nSeqNo, sUri)
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Second * 3)
 		}
 	}
 
