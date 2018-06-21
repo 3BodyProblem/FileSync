@@ -7,11 +7,13 @@
 	<setting name="SSE.m60" value="D:\HQHISDATA\SSE\MIN\" desc="folder of shanghai 60 minute lines (raw data)"/>
 	<setting name="SSE.d1" value="D:\HQHISDATA\SSE\DAY" desc="folder of shanghai day lines (raw data)"/>
 	<setting name="SSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shanghai WEIGHT lines (raw data)"/>
+	<setting name="SSE.st" value="D:\HQHISDATA\SSE\STATIC" desc="folder of shanghai STATIC data (raw data)"/>
 <!--	<setting name="SZSE.m1" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 1 minute lines (raw data)"/>-->
 	<setting name="SZSE.real_m1" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 1 minute lines (raw data)"/>
 	<setting name="SZSE.m60" value="D:\HQHISDATA\SZSE\MIN\" desc="folder of shenzheng 60 minute lines (raw data)"/>
 	<setting name="SZSE.d1" value="D:\HQHISDATA\SZSE\DAY\" desc="folder of shenzheng day lines (raw data)"/>
-	<setting name="SZSE.wt" value="D:\HQHISDATA\SSE\WEIGHT" desc="folder of shenzheng WEIGHT lines (raw data)"/>
+	<setting name="SZSE.wt" value="D:\HQHISDATA\SZSE\WEIGHT" desc="folder of shenzheng WEIGHT lines (raw data)"/>
+	<setting name="SZSE.st" value="D:\HQHISDATA\SZSE\STATIC" desc="folder of shenzheng STATIC data (raw data)"/>
 	<setting name="HKSE.Participant" value=".\HKSE\" desc="FTP:./Participant.txt"/>
 	<setting name="HKSE.shase_rzrq_by_date" value=".\HKSE\shase_rzrq_by_date\" desc="FTP:./shase_rzrq_by_date"/>
 	<setting name="HKSE.sznse_rzrq_by_date" value=".\HKSE\sznse_rzrq_by_date\" desc="FTP:./sznse_rzrq_by_date"/>

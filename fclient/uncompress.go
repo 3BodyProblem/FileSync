@@ -123,6 +123,9 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 					if strings.LastIndex(sTargetFile, "/DAY/") > 0 {
 						pTarFile.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
 					}
+					if strings.LastIndex(sTargetFile, "/STATIC/") > 0 {
+						pTarFile.WriteString("code,name,lotsize,contractmult,contractunit,startdate,enddate,xqdate,deliverydate,expiredate,underlyingcode,underlyingname,optiontype,callorput,exercisepx\n")
+					}
 				}
 			}
 

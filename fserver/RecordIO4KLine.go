@@ -508,3 +508,53 @@ type WeightRecordIO struct {
 func (pSelf *WeightRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 	return bytesData, 20120609, len(bytesData)
 }
+
+///////////////////////// Static Table ///////////////////////////////////////////
+type StaticRecordIO struct {
+	BaseRecordIO
+}
+
+func (pSelf *StaticRecordIO) CodeInWhiteTable(sFileName string) bool {
+	sTmpName := strings.ToLower(sFileName)
+	objTimeNow := time.Now()
+	nToday := objTimeNow.Year()*10000 + int(objTimeNow.Month())*100 + objTimeNow.Day()
+	sFilePreName := fmt.Sprintf("static%d.", nToday)
+
+	if strings.Contains(sTmpName, sFilePreName) == true {
+		return true
+	}
+
+	return false
+}
+
+func (pSelf *StaticRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
+	var objTimeNow time.Time = time.Now()
+	var nToday int = objTimeNow.Year()*10000 + int(objTimeNow.Month()*100) + objTimeNow.Day()
+	var rstr string = ""
+	var nOffset int = 0
+	var nLastOffset int = 0
+	var bSep byte = byte('\n')
+	var nBytesLen int = len(bytesData)
+
+	for nOffset = 0; nOffset < nBytesLen; nOffset++ {
+		if bytesData[nOffset] != bSep {
+			continue
+		}
+
+		sLine := string(bytesData[nLastOffset:nOffset])
+		lstRecords := strings.Split(sLine, ",")
+		nLastOffset = nOffset + 1
+		sFirstFields := lstRecords[0]
+		if len(sFirstFields) <= 0 {
+			continue
+		}
+
+		if false == pSelf.CodeRangeFilter.CodeInRange(sFirstFields) {
+			continue
+		}
+
+		rstr += (string(sLine) + "\n")
+	}
+
+	return []byte(rstr), nToday, len(bytesData)
+}

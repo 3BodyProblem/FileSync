@@ -363,6 +363,9 @@ func (pSelf *Compressor) XCompress(sResType string, objDataSrc *DataSourceConfig
 	sDestFolder = strings.Replace(sDestFolder, "\\", "/", -1)
 	// 压缩策略配置部分
 	switch {
+	case (objDataSrc.MkID == "sse" && sDataType == ".st") || (objDataSrc.MkID == "szse" && sDataType == ".st"):
+		objRecordIO := StaticRecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of Weight data loader
+		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "STATIC/STATIC."), objDataSrc.Folder, &objRecordIO)
 	case (objDataSrc.MkID == "sse" && sDataType == ".wt") || (objDataSrc.MkID == "szse" && sDataType == ".wt"):
 		objRecordIO := WeightRecordIO{BaseRecordIO: BaseRecordIO{CodeRangeFilter: codeRange, DataType: strings.ToLower(sResType)}} // policy of Weight data loader
 		return pSelf.TranslateFolder(filepath.Join(sDestFolder, "WEIGHT/WEIGHT."), objDataSrc.Folder, &objRecordIO)
