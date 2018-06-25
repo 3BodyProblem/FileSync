@@ -40,7 +40,7 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 	}
 
 	nFileOpenMode := os.O_RDWR | os.O_CREATE
-	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") && false == strings.Contains(sSubPath, "MIN1_TODAY") {
+	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") && false == strings.Contains(sSubPath, "MIN1_TODAY") && false == strings.Contains(sSubPath, "/STATIC/") {
 		nFileOpenMode |= os.O_APPEND
 	} else {
 		nFileOpenMode |= os.O_TRUNC
@@ -77,6 +77,10 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			_, sSplitFileName := path.Split(sTargetFile)
 			if strings.Contains(sSplitFileName, ".") == false {
 				continue
+			}
+			nStaticIndex := strings.LastIndex(sTargetFile, "/STATIC20")
+			if nStaticIndex > 0 {
+				sTargetFile = sTargetFile[:nStaticIndex+1] + "STATIC.csv"
 			}
 			sTargetFolder := path.Dir(sTargetFile)
 			if "windows" == runtime.GOOS {

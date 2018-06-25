@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	//"runtime/pprof"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -232,6 +233,7 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 		}
 	}
 
+	runtime.GC()
 	log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Release Downloader] %s : CompleteCount = %d, TotalCount = %d", sDataType, nExtractedFileNum, len(lstDownloadTask))
 }
 
