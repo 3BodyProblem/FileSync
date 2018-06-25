@@ -118,7 +118,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 		// cal. 60 minutes k-lines
 		nCurTime, _ := strconv.Atoi(lstRecords[1])
-		nClosePx, _ = strconv.ParseFloat(lstRecords[5], 64)
+		nClosePx, _ := strconv.ParseFloat(lstRecords[5], 64)
 		if 0 == nClosePx { // maybe it's a invalid record data ........................
 			continue
 		}
