@@ -78,7 +78,6 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		Voip         float64 // Voip
 	} // 60 minutes k-line
 
-	bNewBegin := true
 	nLastOffset := 0
 	bSep := byte('\n')
 	nBytesLen := len(bytesData)
@@ -98,7 +97,7 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		}
 
 		objMin60.Date, err = strconv.Atoi(lstRecords[0])
-		if err != nil || 20180618 == objMin60.Date {
+		if err != nil {
 			continue
 		}
 
@@ -110,7 +109,6 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		}
 
 		if nToday == objMin60.Date && false == bLoadTodayData {
-			bNewBegin = false
 			continue
 		}
 
@@ -120,7 +118,11 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 
 		// cal. 60 minutes k-lines
 		nCurTime, _ := strconv.Atoi(lstRecords[1])
-		objMin60.Close, _ = strconv.ParseFloat(lstRecords[5], 64)
+		nClosePx, _ = strconv.ParseFloat(lstRecords[5], 64)
+		if 0 == nClosePx { // maybe it's a invalid record data ........................
+			continue
+		}
+		objMin60.Close = nClosePx
 		objMin60.Settle, _ = strconv.ParseFloat(lstRecords[6], 64)
 		objMin60.Voip, _ = strconv.ParseFloat(lstRecords[11], 64)
 
@@ -142,7 +144,6 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		}
 
 		if nReturnDate != objMin60.Date {
-			bNewBegin = false
 			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", nLastDate, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			return []byte(rstr), nReturnDate, nOffset
 		}
@@ -159,11 +160,9 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 			}
 
 			if nCurIndex > 0 {
-				bNewBegin = false
 				rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 			}
 
-			bNewBegin = true
 			objMin60.Time = nPeriodTime
 			objMin60.Open = objMin60.Close
 			objMin60.High = objMin60.Close
@@ -193,10 +192,8 @@ func (pSelf *Minutes60RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int
 		}
 	}
 
-	if true == bNewBegin {
-		if objMin60.Time > 0 {
-			rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", objMin60.Date, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
-		}
+	if objMin60.Time > 0 {
+		rstr += fmt.Sprintf("%d,%d,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f\n", nLastDate, objMin60.Time, objMin60.Open, objMin60.High, objMin60.Low, objMin60.Close, objMin60.Settle, objMin60.Amount, objMin60.Volume, objMin60.OpenInterest, objMin60.NumTrades, objMin60.Voip)
 	}
 
 	return []byte(rstr), nReturnDate, len(bytesData)
@@ -482,7 +479,7 @@ func (pSelf *Day1RecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 			continue
 		}
 		nDate, err := strconv.Atoi(sFirstFields)
-		if err != nil || 20180618 == nDate {
+		if err != nil {
 			continue
 		}
 
