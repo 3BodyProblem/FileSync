@@ -78,9 +78,9 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			if strings.Contains(sSplitFileName, ".") == false {
 				continue
 			}
-			nStaticIndex := strings.LastIndex(sTargetFile, "/STATIC20")
+			nStaticIndex := strings.LastIndex(sTargetFile, "STATIC20")
 			if nStaticIndex > 0 {
-				sTargetFile = sTargetFile[:nStaticIndex+1] + "STATIC.csv"
+				sTargetFile = sTargetFile[:nStaticIndex] + "STATIC.csv"
 			}
 			sTargetFolder := path.Dir(sTargetFile)
 			if "windows" == runtime.GOOS {
