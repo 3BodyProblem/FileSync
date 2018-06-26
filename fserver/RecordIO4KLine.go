@@ -10,7 +10,9 @@ import (
 	"bytes"
 	"compress/zlib"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -509,15 +511,36 @@ func (pSelf *WeightRecordIO) LoadFromFile(bytesData []byte) ([]byte, int, int) {
 ///////////////////////// Static Table ///////////////////////////////////////////
 type StaticRecordIO struct {
 	BaseRecordIO
+	nLastExploreFolderDate int
+	sCompressFileName      string
 }
 
 func (pSelf *StaticRecordIO) CodeInWhiteTable(sFileName string) bool {
-	sTmpName := strings.ToLower(sFileName)
 	objTimeNow := time.Now()
 	nToday := objTimeNow.Year()*10000 + int(objTimeNow.Month())*100 + objTimeNow.Day()
-	sFilePreName := fmt.Sprintf("static%d.", nToday)
+	if pSelf.nLastExploreFolderDate != nToday {
+		sSrcFolder := path.Dir(sFileName)
+		/*
+			func ReadDir(dirname string) ([]os.FileInfo, error)
+			    ReadDir reads the directory named by dirname and returns a list of
+			    directory entries sorted by filename.
+		*/
+		lstDir, err := ioutil.ReadDir(sSrcFolder)
+		if err != nil {
+			log.Println("[ERR] StaticRecordIO.CodeInWhiteTable() : cannot find folder of file :", sFileName)
+			return false
+		}
+		for _, objFilePath := range lstDir {
+			if false == objFilePath.IsDir() {
+				pSelf.sCompressFileName = objFilePath.Name()
+			}
+		}
 
-	if strings.Contains(sTmpName, sFilePreName) == true {
+		pSelf.nLastExploreFolderDate = nToday
+		pSelf.sCompressFileName = strings.ToLower(pSelf.sCompressFileName)
+	}
+
+	if strings.Contains(strings.ToLower(sFileName), pSelf.sCompressFileName) == true {
 		return true
 	}
 
