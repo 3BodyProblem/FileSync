@@ -14,7 +14,9 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Package Initialization
@@ -80,7 +82,11 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 			}
 			nStaticIndex := strings.LastIndex(sTargetFile, "STATIC20")
 			if nStaticIndex > 0 {
-				sTargetFile = sTargetFile[:nStaticIndex] + "STATIC.csv"
+				nYear := time.Now().Year()
+				nStaticIndex2 := strings.LastIndex(sTargetFile[:nStaticIndex], strconv.Itoa(nYear))
+				if nStaticIndex2 > 0 {
+					sTargetFile = sTargetFile[:nStaticIndex2] + "STATIC.csv"
+				}
 			}
 			sTargetFolder := path.Dir(sTargetFile)
 			if "windows" == runtime.GOOS {

@@ -221,11 +221,10 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
  * @param[in]	sDateTime		资源文件在服务端的生成时间
  */
 func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime string) (TaskStatusType, string) {
-	var sUrl string = fmt.Sprintf("http://%s/get?uri=%s", pSelf.ServerHost, sUri)        // 资源下载的URL串
-	var sLocalPath string = ""                                                           // 下载资源的本地缓存文件路径
-	var httpRes *http.Response = nil                                                     // 下载资源的请求返回对象(Response)
-	var nTaskStatus TaskStatusType = ST_Error                                            // 下载任务成功状态（返回值）
-	var objFCompare FComparison = FComparison{URI: sUri, MD5: sMD5, DateTime: sDateTime} // 待下载资源与本地缓存文件的差异比较对象
+	var sUrl string = fmt.Sprintf("http://%s/get?uri=%s", pSelf.ServerHost, sUri) // 资源下载的URL串
+	var sLocalPath string = ""                                                    // 下载资源的本地缓存文件路径
+	var httpRes *http.Response = nil                                              // 下载资源的请求返回对象(Response)
+	var nTaskStatus TaskStatusType = ST_Error                                     // 下载任务成功状态（返回值）
 
 	defer func() {
 		if pObjPanic := recover(); pObjPanic != nil { // 异常恢复，以至于程序不会异常中断
@@ -236,70 +235,67 @@ func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime stri
 		}
 	}()
 
-	if true == objFCompare.Compare() { // 和缓存文件相同，已经下载过了，跳空以下的所有资源下载逻辑
-		nTaskStatus = ST_Ignore
-	} else { // 和本地缓存文件不同（或缓存文件不存在），需要从服务器下载
-		httpClient := http.Client{
-			CheckRedirect: nil,
-			Jar:           globalCurrentCookieJar,
-			Timeout:       6 * 60 * time.Second,
-			Transport: &http.Transport{
-				Dial: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 6 * 60 * time.Second,
-				}).Dial,
-				// TLSHandshakeTimeout:time.Second * 10,
-				// IdleConnTimeout:    time.Second * 30 * 1,
-				ResponseHeaderTimeout: time.Second * 30 * 1,
-				ExpectContinueTimeout: time.Second * 30 * 1,
-			},
-		}
-		/////////////// 请求下载的资源数据 /////////////////////
-		httpReq, err := http.NewRequest("GET", sUrl, nil)
-		httpRes, err = httpClient.Do(httpReq)
-		if err != nil {
-			log.Println("[ERR] FileSyncClient.FetchResource() : error in response : ", err.Error())
-			return ST_Error, ""
-		}
-
-		defer httpRes.Body.Close()
-		////////////// 为下载的资源文件准备好目录结构进行存放 ////
-		sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
-		if err != nil {
-			log.Println("[WARN] FileSyncClient.FetchResource() : failed 2 fetch absolute path of program", sUrl, sMD5, sDateTime)
-			return ST_Error, ""
-		}
-
-		sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
-		sLocalFile := filepath.Join(sLocalFolder, sUri)
-		sMkFolder := path.Dir(sLocalFile)
-		if "windows" == runtime.GOOS {
-			sMkFolder = sLocalFile[:strings.LastIndex(sLocalFile, "\\")]
-		}
-		err = os.MkdirAll(sMkFolder, 0711)
-		if err != nil {
-			log.Printf("[WARN] FileSyncClient.FetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
-			return ST_Error, ""
-		}
-		////////////// 从网卡读出资源文件数据，并存盘 ////////////
-		objDataBuf := &bytes.Buffer{}
-		_, err2 := objDataBuf.ReadFrom(httpRes.Body)
-		if err2 != nil {
-			log.Println("[ERR] FileSyncClient.FetchResource() :  cannot read response : ", sUrl, sMD5, sDateTime, err.Error())
-			return ST_Error, ""
-		}
-
-		objFile, _ := os.Create(sLocalFile)
-		defer objFile.Close()
-		_, err = io.Copy(objFile, objDataBuf)
-		if err != nil {
-			log.Println("[ERR] FileSyncClient.FetchResource() :  cannot save 2 file : ", sUri, sMD5, sDateTime, err.Error())
-			return ST_Error, ""
-		}
-		//////////// 设置下载的资源文件信息，并待返回
-		sLocalPath = sLocalFile    // 本地资源文件存放路径
-		nTaskStatus = ST_Completed // 本次下载成功标识
+	// 和本地缓存文件不同（或缓存文件不存在），需要从服务器下载
+	httpClient := http.Client{
+		CheckRedirect: nil,
+		Jar:           globalCurrentCookieJar,
+		Timeout:       6 * 60 * time.Second,
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 6 * 60 * time.Second,
+			}).Dial,
+			// TLSHandshakeTimeout:time.Second * 10,
+			// IdleConnTimeout:    time.Second * 30 * 1,
+			ResponseHeaderTimeout: time.Second * 30 * 1,
+			ExpectContinueTimeout: time.Second * 30 * 1,
+		},
 	}
+	/////////////// 请求下载的资源数据 /////////////////////
+	httpReq, err := http.NewRequest("GET", sUrl, nil)
+	httpRes, err = httpClient.Do(httpReq)
+	if err != nil {
+		log.Println("[ERR] FileSyncClient.FetchResource() : error in response : ", err.Error())
+		return ST_Error, ""
+	}
+
+	defer httpRes.Body.Close()
+	////////////// 为下载的资源文件准备好目录结构进行存放 ////
+	sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
+	if err != nil {
+		log.Println("[WARN] FileSyncClient.FetchResource() : failed 2 fetch absolute path of program", sUrl, sMD5, sDateTime)
+		return ST_Error, ""
+	}
+
+	sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
+	sLocalFile := filepath.Join(sLocalFolder, sUri)
+	sMkFolder := path.Dir(sLocalFile)
+	if "windows" == runtime.GOOS {
+		sMkFolder = sLocalFile[:strings.LastIndex(sLocalFile, "\\")]
+	}
+	err = os.MkdirAll(sMkFolder, 0711)
+	if err != nil {
+		log.Printf("[WARN] FileSyncClient.FetchResource() : failed 2 create folder : %s : %s", sLocalFile, err.Error())
+		return ST_Error, ""
+	}
+	////////////// 从网卡读出资源文件数据，并存盘 ////////////
+	objDataBuf := &bytes.Buffer{}
+	_, err2 := objDataBuf.ReadFrom(httpRes.Body)
+	if err2 != nil {
+		log.Println("[ERR] FileSyncClient.FetchResource() :  cannot read response : ", sUrl, sMD5, sDateTime, err.Error())
+		return ST_Error, ""
+	}
+
+	objFile, _ := os.Create(sLocalFile)
+	defer objFile.Close()
+	_, err = io.Copy(objFile, objDataBuf)
+	if err != nil {
+		log.Println("[ERR] FileSyncClient.FetchResource() :  cannot save 2 file : ", sUri, sMD5, sDateTime, err.Error())
+		return ST_Error, ""
+	}
+	//////////// 设置下载的资源文件信息，并待返回
+	sLocalPath = sLocalFile    // 本地资源文件存放路径
+	nTaskStatus = ST_Completed // 本次下载成功标识
 
 	return nTaskStatus, sLocalPath
 }
