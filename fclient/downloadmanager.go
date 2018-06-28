@@ -250,12 +250,12 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
  * @brief		如果历史缓存和数据中，有不符合非线性有效性md5检查的文件按删除
  * @param[in]	lstDownloadTask		下载任务列表
  * @return		false,出错全清; true,返回待下载资源开始的位置索引
- * @note		要么发现“脏数据”出错全清，要么返回待下载资源开始的位置索引
+ * @note		要么发现出现在中间位置（历史位置）的“脏数据”出错全清，要么返回待下载资源开始的位置索引
  */
 func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string, lstDownloadTask []ResDownload) (bool, int) {
-	var bIsIdentical bool = false
-	var nDisableIndexOfFirstTime int = 0 // 第一处不一致的位置索引
+	var bIsIdentical bool = false		 // 服务器资源文件和本地缓存是否一致的标识
 	var bHaveDiscrepancy bool = false    // 是否有不一致的缓存文件
+	var nDisableIndexOfFirstTime int = 0 // 第一处不一致的位置索引
 
 	for i, objRes := range lstDownloadTask {
 		var objFCompare FComparison = FComparison{TargetFolder: sTargetFolder, URI: objRes.URI, MD5: objRes.MD5, DateTime: objRes.UPDATE} // 待下载资源与本地缓存文件的差异比较对象
