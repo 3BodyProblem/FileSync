@@ -205,11 +205,12 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 	_, nDownloadIndex := pSelf.ClearInvalidHistorayCacheAndData(sTargetFolder, lstDownloadTask)
 	if nDownloadIndex > 0 {
 		pSelf.I_Downloader.DumpProgress(nDownloadIndex)
+		log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Ignore] DataType=%s, FileCount=%d", sDataType, nDownloadIndex)
 	}
-	log.Println("------------------------------>", sDataType, nDownloadIndex, len(lstDownloadTask[nDownloadIndex:]))
-	time.Sleep(time.Second * 60 * 10)
 	/////////////////////////// 在该资源类别下，建立分派下载任务 //////////////////////////
-	go pSelf.DownloadTaskDispatch(lstDownloadTask[nDownloadIndex:])
+	if len(lstDownloadTask[nDownloadIndex:]) > 0 {
+		go pSelf.DownloadTaskDispatch(lstDownloadTask[nDownloadIndex:])
+	}
 
 	////////////////////////// 等待有序的执行该类别中资源的解压任务 /////////////////////
 	for j := 0; j < pSelf.TTL && nExtractedFileNum < (len(lstDownloadTask)-nDownloadIndex); {
@@ -252,13 +253,14 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
  * @note		要么发现“脏数据”出错全清，要么返回待下载资源开始的位置索引
  */
 func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string, lstDownloadTask []ResDownload) (bool, int) {
+	var bIsIdentical bool = false
 	var nDisableIndexOfFirstTime int = 0 // 第一处不一致的位置索引
 	var bHaveDiscrepancy bool = false    // 是否有不一致的缓存文件
 
 	for i, objRes := range lstDownloadTask {
 		var objFCompare FComparison = FComparison{TargetFolder: sTargetFolder, URI: objRes.URI, MD5: objRes.MD5, DateTime: objRes.UPDATE} // 待下载资源与本地缓存文件的差异比较对象
 
-		bIsIdentical, _ := objFCompare.Compare()
+		bIsIdentical, _ = objFCompare.Compare()
 		if true == bIsIdentical {
 			if true == bHaveDiscrepancy { // 在已经下载的资源中，如果发现中间位置有“脏资源”，需要清空该分类下的所有缓存和文件
 				objFCompare.ClearCacheFolder()
@@ -275,10 +277,20 @@ func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string
 		}
 	}
 
-	if 0 == nDisableIndexOfFirstTime {
-		return true, len(lstDownloadTask)
+	// 特殊处理任务列表长度为1的资源列表
+	if 1 == len(lstDownloadTask) {
+		if false == bIsIdentical {
+			return true, 0 // 有资源文件和缓存文件不一致，需要重新下载
+		} else {
+			return true, 1 // 不需要下载，都一致
+		}
+	}
+
+	// 资源列表长度>1的情况
+	if false == bHaveDiscrepancy {
+		return true, len(lstDownloadTask) // 未找到不配对的情况
 	} else {
-		return true, nDisableIndexOfFirstTime
+		return true, nDisableIndexOfFirstTime // 找到在末尾几天有未下载的情况
 	}
 }
 
