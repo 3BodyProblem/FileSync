@@ -206,6 +206,8 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 	if nDownloadIndex > 0 {
 		pSelf.I_Downloader.DumpProgress(nDownloadIndex)
 	}
+	log.Println("------------------------------>", sDataType, nDownloadIndex, len(lstDownloadTask[nDownloadIndex:]))
+	time.Sleep(time.Second * 60 * 10)
 	/////////////////////////// 在该资源类别下，建立分派下载任务 //////////////////////////
 	go pSelf.DownloadTaskDispatch(lstDownloadTask[nDownloadIndex:])
 
@@ -246,8 +248,8 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 /**
  * @brief		如果历史缓存和数据中，有不符合非线性有效性md5检查的文件按删除
  * @param[in]	lstDownloadTask		下载任务列表
- * @return		false,出错全清; true,返回未开始资源开始的位置索引
- * @note		要么发现“脏数据”出错全清，要么返回未开始资源开始的位置索引
+ * @return		false,出错全清; true,返回待下载资源开始的位置索引
+ * @note		要么发现“脏数据”出错全清，要么返回待下载资源开始的位置索引
  */
 func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string, lstDownloadTask []ResDownload) (bool, int) {
 	var nDisableIndexOfFirstTime int = 0 // 第一处不一致的位置索引
@@ -255,8 +257,8 @@ func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string
 
 	for i, objRes := range lstDownloadTask {
 		var objFCompare FComparison = FComparison{TargetFolder: sTargetFolder, URI: objRes.URI, MD5: objRes.MD5, DateTime: objRes.UPDATE} // 待下载资源与本地缓存文件的差异比较对象
-		bIsIdentical, _ := objFCompare.Compare()
 
+		bIsIdentical, _ := objFCompare.Compare()
 		if true == bIsIdentical {
 			if true == bHaveDiscrepancy { // 在已经下载的资源中，如果发现中间位置有“脏资源”，需要清空该分类下的所有缓存和文件
 				objFCompare.ClearCacheFolder()
@@ -267,13 +269,17 @@ func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string
 			continue
 		}
 
-		if false == bHaveDiscrepancy { // 找到第一处不一致的地方
+		if false == bIsIdentical && false == bHaveDiscrepancy { // 找到第一处不一致的地方
 			bHaveDiscrepancy = true
 			nDisableIndexOfFirstTime = i
 		}
 	}
 
-	return true, nDisableIndexOfFirstTime
+	if 0 == nDisableIndexOfFirstTime {
+		return true, len(lstDownloadTask)
+	} else {
+		return true, nDisableIndexOfFirstTime
+	}
 }
 
 /**

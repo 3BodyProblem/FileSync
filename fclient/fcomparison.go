@@ -74,7 +74,7 @@ func (pSelf *FComparison) Compare() (bool, FileDescType) {
 
 	// result
 	if strings.ToLower(pSelf.MD5) != strings.ToLower(sMD5Str) {
-		log.Printf("[INF] FComparison.Compare() : found a discrepancy of md5 between server(md5:%s) && client(md5:%s)", strings.ToLower(pSelf.MD5), strings.ToLower(sMD5Str))
+		log.Printf("[INF] FComparison.Compare() : found a discrepancy of md5 between server(url:%s) && client(md5:%s)", strings.ToLower(pSelf.URI), strings.ToLower(sMD5Str))
 		return false, nFileDescType
 	}
 
