@@ -17,7 +17,7 @@ import (
 ///////////////////////////////////// 下载资源的缓存文件管理类 //////////////////////
 /**
  * @Class 		I_CacheFile
- * @brief		缓存文件管理接口
+ * @brief		缓存文件管理接口，用来对一些未完成的任务的资源进行rollback，以避免影响下一次的同步任务
  * @author		barry
  */
 type I_CacheFile interface {
@@ -260,7 +260,12 @@ func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string
 	for i, objRes := range lstDownloadTask {
 		var objFCompare FComparison = FComparison{TargetFolder: sTargetFolder, URI: objRes.URI, MD5: objRes.MD5, DateTime: objRes.UPDATE} // 待下载资源与本地缓存文件的差异比较对象
 
-		bIsIdentical, _ = objFCompare.Compare()
+		bIsIdentical, _ = objFCompare.Compare()	// 比较资源文件和本地缓存中的是否一致或存在
+
+		//if false == bIsIdentical {	// 判断是否为只需要下载，不需要解压的 "新合并资料包
+			GlobalCombinationFileJudgement.JudgeAndRecord( &objRes, CacheFolder )
+		//}
+
 		if true == bIsIdentical {
 			if true == bHaveDiscrepancy { // 在已经下载的资源中，如果发现中间位置有“脏资源”，需要清空该分类下的所有缓存和文件
 				objFCompare.ClearCacheFolder()

@@ -121,6 +121,11 @@ func (pSelf *FileSyncClient) Initialize() bool {
 	pSelf.objSyncTaskTable = make(map[string]DownloadTask)
 	pSelf.objCacheTable.Initialize()
 
+	if false == GlobalCombinationFileJudgement.Initialize() {
+		log.Println("[ERR] FileSyncClient.DoTasks() : cannot initialize object of GlobalCombinationFileJudgement ")
+		return false
+	}
+
 	return true
 }
 
