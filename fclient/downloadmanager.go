@@ -247,7 +247,7 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 
 ///< ---------------------- [Pivate 方法] -----------------------------
 /**
- * @brief		如果历史缓存和数据中，有不符合非线性有效性md5检查的文件按删除
+ * @brief		如果历史缓存和数据中，只允许末尾有连续且未下载的资源文件，如果中间断也出现有不一致的资源文件则被视为“脏数据”，需要删除光该分类下的数据后做全新下载
  * @param[in]	lstDownloadTask		下载任务列表
  * @return		false,出错全清; true,返回待下载资源开始的位置索引
  * @note		要么发现出现在中间位置（历史位置）的“脏数据”出错全清，要么返回待下载资源开始的位置索引
