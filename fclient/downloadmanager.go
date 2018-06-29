@@ -202,18 +202,18 @@ type DownloadTask struct {
 func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
 	var nExtractedFileNum int = 0 // 在本资源文件类别中，已经解压文件的数量
 	///// 跳过已经下载过的任务，若下载过的任务表中间有“脏数据”则清空这个类型的资源后全新下载 /////
-	_, nDownloadIndex := pSelf.ClearInvalidHistorayCacheAndData(sTargetFolder, lstDownloadTask)
-	if nDownloadIndex > 0 {
-		pSelf.I_Downloader.DumpProgress(nDownloadIndex)
-		log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Ignore] DataType=%s, FileCount=%d", sDataType, nDownloadIndex)
+	_, lstSkipDownload, lstValidDownload := pSelf.ClearInvalidHistorayCacheAndData(sTargetFolder, lstDownloadTask)
+	if len(lstSkipDownload) > 0 {
+		pSelf.I_Downloader.DumpProgress(len(lstSkipDownload))
+		log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Ignore] DataType=%s, FileCount=%d", sDataType, len(lstSkipDownload))
 	}
 	/////////////////////////// 在该资源类别下，建立分派下载任务 //////////////////////////
-	if len(lstDownloadTask[nDownloadIndex:]) > 0 {
-		go pSelf.DownloadTaskDispatch(lstDownloadTask[nDownloadIndex:])
+	if len(lstValidDownload) > 0 {
+		go pSelf.DownloadTaskDispatch(lstValidDownload)
 	}
 
 	////////////////////////// 等待有序的执行该类别中资源的解压任务 /////////////////////
-	for j := 0; j < pSelf.TTL && nExtractedFileNum < (len(lstDownloadTask)-nDownloadIndex); {
+	for j := 0; j < pSelf.TTL && nExtractedFileNum < len(lstValidDownload); {
 		select {
 		case objStatus := <-pSelf.ResFileChannel: // 试着从解压任务栈，取一个解压任务
 			if objStatus.Status == ST_Completed { // 增量文件，需要解压
@@ -242,61 +242,63 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 	}
 
 	runtime.GC()
-	log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Release Downloader] %s : CompleteCount = %d, TotalCount = %d", sDataType, nExtractedFileNum, len(lstDownloadTask))
+	log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Release Downloader] %s : CompleteCount = %d, TotalCount = %d", sDataType, nExtractedFileNum, len(lstSkipDownload)+len(lstValidDownload))
 }
 
 ///< ---------------------- [Pivate 方法] -----------------------------
 /**
  * @brief		如果历史缓存和数据中，只允许末尾有连续且未下载的资源文件，如果中间断也出现有不一致的资源文件则被视为“脏数据”，需要删除光该分类下的数据后做全新下载
  * @param[in]	lstDownloadTask		下载任务列表
- * @return		false,出错全清; true,返回待下载资源开始的位置索引
+ * @return		false,出错全清; true,返回待下载资源开始的位置索引; + 跳过的任务列表 + 需要执行的任务列表
  * @note		要么发现出现在中间位置（历史位置）的“脏数据”出错全清，要么返回待下载资源开始的位置索引
  */
-func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string, lstDownloadTask []ResDownload) (bool, int) {
-	var bIsIdentical bool = false        // 服务器资源文件和本地缓存是否一致的标识
-	var bHaveDiscrepancy bool = false    // 是否有不一致的缓存文件
-	var nDisableIndexOfFirstTime int = 0 // 第一处不一致的位置索引
+func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string, lstDownloadTask []ResDownload) (bool, []ResDownload, []ResDownload) {
+	var bIsIdentical bool = false          // 服务器资源文件和本地缓存是否一致的标识
+	var bHaveDiscrepancy bool = false      // 是否有不一致的缓存文件
+	var lstValidDownload []ResDownload     // 返回的需要下载的任务列表
+	var lstSkipDownload []ResDownload      // 返回的不要下载的任务列表
+	var lstEmptySkipDownload []ResDownload // 返回的不要下载的空任务列表
 
-	for i, objRes := range lstDownloadTask {
+	for _, objRes := range lstDownloadTask {
 		var objFCompare FComparison = FComparison{TargetFolder: sTargetFolder, URI: objRes.URI, MD5: objRes.MD5, DateTime: objRes.UPDATE} // 待下载资源与本地缓存文件的差异比较对象
 		bIsIdentical, _ = objFCompare.Compare()                                                                                           // 比较资源文件和本地缓存中的是否一致或存在
 
-		if false == bIsIdentical { // 判断是否为只需要下载，不需要解压的 "新合并资料包
+		/////////////////// 判断是否为"新合并资料包": 只需要下载，不需要解压的
+		if false == bIsIdentical {
+			lstValidDownload = append(lstValidDownload, objRes)
 			if true == GlobalCombinationFileJudgement.JudgeDownloadOnly(&objRes, CacheFolder) {
-				continue // 只需要下载不用解压的文件，只需要跳过即可以
+				continue // 只需要下载不用解压的(新合并生成的)文件,加入下载队列
 			}
 		}
 
+		////////////////// 在已经下载的资源中，如果发现中间位置有“脏资源”，需要清空该分类下的所有缓存和文件
 		if true == bIsIdentical {
-			if true == bHaveDiscrepancy { // 在已经下载的资源中，如果发现中间位置有“脏资源”，需要清空该分类下的所有缓存和文件
+			if true == bHaveDiscrepancy {
 				objFCompare.ClearCacheFolder()
 				objFCompare.ClearDataFolder()
-				return false, 0
+				return false, lstEmptySkipDownload, lstDownloadTask // 有“脏资源”，需要清空该分类下的所有缓存和文件
 			}
 
+			lstSkipDownload = append(lstSkipDownload, objRes) // 与本地一致的资源包，跳过下载
 			continue
 		}
 
-		if false == bIsIdentical && false == bHaveDiscrepancy { // 找到第一处不一致的地方
+		////////////////// 找到第一处不一致的地方(已经排除掉“新合并资料包”的情况) //////////////////////////
+		if false == bIsIdentical && false == bHaveDiscrepancy {
 			bHaveDiscrepancy = true
-			nDisableIndexOfFirstTime = i
 		}
 	}
 
-	// 特殊处理任务列表长度为1的资源列表
 	if 1 == len(lstDownloadTask) {
+		/////////////// 特殊处理任务列表长度为1的资源列表 //////////
 		if false == bIsIdentical {
-			return true, 0 // 有资源文件和缓存文件不一致，需要重新下载
+			return true, lstEmptySkipDownload, lstDownloadTask // 有资源文件和缓存文件不一致，需要重新下载
 		} else {
-			return true, 1 // 不需要下载，都一致
+			return true, lstDownloadTask, lstEmptySkipDownload // 不需要下载，都一致
 		}
-	}
-
-	// 资源列表长度>1的情况
-	if false == bHaveDiscrepancy {
-		return true, len(lstDownloadTask) // 未找到不配对的情况
 	} else {
-		return true, nDisableIndexOfFirstTime // 找到在末尾几天有未下载的情况
+		////////////// 资源列表长度>1的情况 //////////////////////
+		return true, lstSkipDownload, lstValidDownload // 找到在末尾几天有未下载的情况
 	}
 }
 

@@ -100,6 +100,7 @@ func (pSelf *CombinationFileJudgement) JudgeDownloadOnly(resFile *ResDownload, s
 
 		if nFileDate > 0 && nExpiredDate > 0 { // 最后几天代表日数据的文件精确到月/日
 			var objToday time.Time = time.Now()
+
 			/////////////// 如果文件名是"前一年"的情况： 数据文件日期只代表到年，所以后面的月和日都为0 --> 需要取到该年最后一个工作日的日期后进行比较
 			if nFileDate%100 == 0 && (objToday.Year()-1) == nFileDate/10000 {
 				objDateOfLastYear := time.Date(objToday.Year()/10000, time.Month(100), 1, 8, 1, 2, 0, time.Local)
@@ -118,16 +119,16 @@ func (pSelf *CombinationFileJudgement) JudgeDownloadOnly(resFile *ResDownload, s
 					log.Printf("[INF] CombinationFileJudgement.JudgeDownloadOnly() : New Merged File Of Last Year (%s) %s, Gen File Date = %d", objDateOfLastYear.Format("2006-01-02 15:04:05"), objDateOfLastYear.Weekday().String(), nFileDate)
 				}
 			}
-
 			//////////////// 如果文件名是月/日文件的情况： //////////////////////////
 			objFileDate := time.Date(nFileDate/10000, time.Month(nFileDate%10000/100), nFileDate%100, 21, 6, 9, 0, time.Local)
 			subHours := objToday.Sub(objFileDate)
 			nDays := subHours.Hours() / 24
-			if nDays > 36 {
-				return false // 早于当前日一个月的数据文件，即要下载，又要解压
+			if nDays > 32 {
+				log.Printf("[INF] CombinationFileJudgement.JudgeDownloadOnly() : Merged Resource Download&Extract -> outof judge range, FileDate = %d, ExpiredDate = %d", nFileDate, nExpiredDate)
+				return false // 早于当前日一个月的数据文件，即要下载，又要解压(即，必须与本地缓存一致)
 			}
 			/////////////////////////////////////////////////////////////////////
-			if nFileDate > nExpiredDate {
+			if nFileDate <= nExpiredDate {
 				log.Printf("[INF] CombinationFileJudgement.JudgeDownloadOnly() : Merged Resource Download Only -> (%s|%s)%s FileDate = %d, ExpiredDate = %d", sMkID, sDataType, resFile.URI, nFileDate, nExpiredDate)
 				objDownloadOnlyFileInfo := DownloadOnlyFile{TYPE: resFile.TYPE, URI: resFile.URI}
 				pSelf.objDownloadOnlyFileTable[resFile.URI] = objDownloadOnlyFileInfo
