@@ -56,12 +56,23 @@ type CombinationFileJudgement struct {
 
 ///< ---------------------- [Public 方法] -----------------------------
 /**
- * @bruef		初始化
+ * @brief		初始化
  */
 func (pSelf *CombinationFileJudgement) Initialize() bool {
 	pSelf.objDownloadOnlyFileTable = make(map[string]DownloadOnlyFile)
 
 	return true
+}
+
+/**
+ * @brief		判断指定的资源文件是否只需要下载，不用解压(是已经下载过的数据，而该资源包是合并出来的文件包)
+ */
+func (pSelf *CombinationFileJudgement) IsDownloadOnly(sURI string) bool {
+	if _, ok := pSelf.objDownloadOnlyFileTable[sURI]; ok {
+		return true
+	}
+
+	return false
 }
 
 /**
@@ -112,7 +123,7 @@ func (pSelf *CombinationFileJudgement) JudgeDownloadOnly(resFile *ResDownload, s
 			objFileDate := time.Date(nFileDate/10000, time.Month(nFileDate%10000/100), nFileDate%100, 21, 6, 9, 0, time.Local)
 			subHours := objToday.Sub(objFileDate)
 			nDays := subHours.Hours() / 24
-			if nDays > 32 {
+			if nDays > 36 {
 				return false // 早于当前日一个月的数据文件，即要下载，又要解压
 			}
 			/////////////////////////////////////////////////////////////////////

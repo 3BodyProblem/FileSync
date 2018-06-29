@@ -326,16 +326,20 @@ func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo Downl
 		} else { // 需要解压当前的下载的资源文件
 			pSelf.I_CacheMgr.MarkExtractedRes(objResInfo.URI)
 			///////////// 解压下载的资源文件 ///////////////////////////////////////
-			objUnzip := Uncompress{TargetFolder: sTargetFolder}
-			if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
-				os.Remove(objResInfo.LocalPath)
-				log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.LocalPath)
-				os.Exit(-100)
-				return
+			if false == GlobalCombinationFileJudgement.IsDownloadOnly(objResInfo.URI) {
+				objUnzip := Uncompress{TargetFolder: sTargetFolder}
+				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
+					os.Remove(objResInfo.LocalPath)
+					log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.LocalPath)
+					os.Exit(-100)
+					return
+				}
+				//////////// 记录最后一次压解数据的日期到该数据分类的记录文件中 //////////////
+				GlobalCombinationFileJudgement.RecordExpiredDate4DataType(&objResInfo, CacheFolder)
+				log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s:%.1f%%, seq:%d-->last:%d] ---> %s", objResInfo.DataType, pSelf.I_Downloader.GetPercentageOfTasks(), objResInfo.SeqNo, pSelf.NoCount, objResInfo.URI)
+			} else {
+				log.Printf("[INF] FileSyncClient.ExtractResData() : [SKIP] [%s:%.1f%%, seq:%d-->last:%d] ---> %s", objResInfo.DataType, pSelf.I_Downloader.GetPercentageOfTasks(), objResInfo.SeqNo, pSelf.NoCount, objResInfo.URI)
 			}
-			//////////// 记录最后一次压解数据的日期到该数据分类的记录文件中 //////////////
-			GlobalCombinationFileJudgement.RecordExpiredDate4DataType(&objResInfo, CacheFolder)
-			log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s:%.1f%%, seq:%d-->last:%d] ---> %s", objResInfo.DataType, pSelf.I_Downloader.GetPercentageOfTasks(), objResInfo.SeqNo, pSelf.NoCount, objResInfo.URI)
 			break
 		}
 	}
