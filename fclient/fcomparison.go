@@ -20,7 +20,7 @@ var (
 	CacheFolder string = "./FileCache" // cache folder of the program
 )
 
-type FileDescType int // 任务类型描述值
+type FileDescType int // 文件存不存在
 
 const (
 	FD_IsNotExist FileDescType = iota // 0: 文件不存在

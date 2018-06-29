@@ -253,18 +253,19 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
  * @note		要么发现出现在中间位置（历史位置）的“脏数据”出错全清，要么返回待下载资源开始的位置索引
  */
 func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string, lstDownloadTask []ResDownload) (bool, int) {
-	var bIsIdentical bool = false		 // 服务器资源文件和本地缓存是否一致的标识
+	var bIsIdentical bool = false        // 服务器资源文件和本地缓存是否一致的标识
 	var bHaveDiscrepancy bool = false    // 是否有不一致的缓存文件
 	var nDisableIndexOfFirstTime int = 0 // 第一处不一致的位置索引
 
 	for i, objRes := range lstDownloadTask {
 		var objFCompare FComparison = FComparison{TargetFolder: sTargetFolder, URI: objRes.URI, MD5: objRes.MD5, DateTime: objRes.UPDATE} // 待下载资源与本地缓存文件的差异比较对象
+		bIsIdentical, _ = objFCompare.Compare()                                                                                           // 比较资源文件和本地缓存中的是否一致或存在
 
-		bIsIdentical, _ = objFCompare.Compare()	// 比较资源文件和本地缓存中的是否一致或存在
-
-		//if false == bIsIdentical {	// 判断是否为只需要下载，不需要解压的 "新合并资料包
-			GlobalCombinationFileJudgement.JudgeAndRecord( &objRes, CacheFolder )
-		//}
+		if false == bIsIdentical { // 判断是否为只需要下载，不需要解压的 "新合并资料包
+			if true == GlobalCombinationFileJudgement.JudgeDownloadOnly(&objRes, CacheFolder) {
+				continue // 只需要下载不用解压的文件，只需要跳过即可以
+			}
+		}
 
 		if true == bIsIdentical {
 			if true == bHaveDiscrepancy { // 在已经下载的资源中，如果发现中间位置有“脏资源”，需要清空该分类下的所有缓存和文件
@@ -324,7 +325,7 @@ func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo Downl
 			time.Sleep(time.Second)
 		} else { // 需要解压当前的下载的资源文件
 			pSelf.I_CacheMgr.MarkExtractedRes(objResInfo.URI)
-			///////////// 解压下载的资源文件 ///////////////////////////
+			///////////// 解压下载的资源文件 ///////////////////////////////////////
 			objUnzip := Uncompress{TargetFolder: sTargetFolder}
 			if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
 				os.Remove(objResInfo.LocalPath)
@@ -332,7 +333,8 @@ func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo Downl
 				os.Exit(-100)
 				return
 			}
-
+			//////////// 记录最后一次压解数据的日期到该数据分类的记录文件中 //////////////
+			GlobalCombinationFileJudgement.RecordExpiredDate4DataType(&objResInfo, CacheFolder)
 			log.Printf("[INF] FileSyncClient.ExtractResData() : [DONE] [%s:%.1f%%, seq:%d-->last:%d] ---> %s", objResInfo.DataType, pSelf.I_Downloader.GetPercentageOfTasks(), objResInfo.SeqNo, pSelf.NoCount, objResInfo.URI)
 			break
 		}

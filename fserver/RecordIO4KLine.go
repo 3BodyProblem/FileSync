@@ -422,10 +422,21 @@ func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int, sSrcFile stri
 	subHours := objToday.Sub(objRecordDate)
 	nDays := subHours.Hours() / 24
 
-	if nDays <= 16 { ////// Current Month
+	if nDays <= 17 { ////// Current Month
 		sFile = fmt.Sprintf("%s%d", sFilePath, nDate)
-	} else { ////////////////////////// Not Current Month
-		sFile = fmt.Sprintf("%s%d", sFilePath, nDate/10000*10000)
+	} else { ////////////////////////// Not Current Month'
+		if nDate/10000 < objToday.Year() { // Not Current Year
+			sFile = fmt.Sprintf("%s%d", sFilePath, nDate/10000*10000)
+		} else { // Is Current Year
+			nDD := (nDate % 100) ////////// One File With 2 Week's Data Inside
+			if nDD <= 15 {
+				nDD = 0
+			} else {
+				nDD = 15
+			}
+			sFile = fmt.Sprintf("%s%d", sFilePath, nDate/100*100+nDD) // 如果不是近期，则目标压缩文件，半个月的数据一个文件名(带上下月信息)
+		}
+
 	}
 
 	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
