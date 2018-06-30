@@ -92,8 +92,10 @@ func (pSelf *FComparison) ClearCacheFolder() bool {
 	sLocalFolder = filepath.Join(sLocalFolder, CacheFolder)
 	// get absolute path of URI in local machine
 	sLocalFile := filepath.Join(sLocalFolder, pSelf.URI)
+	sLocalFile = strings.Replace(sLocalFile, "\\", "/", -1)
 	sLocalFolder = path.Dir(sLocalFile)
 	log.Printf("[INF] FComparison.ClearCacheFolder() : Clearing... %s for %s", sLocalFolder, pSelf.URI)
+
 	err = os.RemoveAll(sLocalFolder)
 	if err != nil {
 		log.Printf("[WARN] FComparison.ClearCacheFolder() : An error occur while clearing %s for %s", sLocalFolder, pSelf.URI)
@@ -114,10 +116,11 @@ func (pSelf *FComparison) ClearDataFolder() bool {
 	}
 
 	sLocalFolder = filepath.Join(sLocalFolder, pSelf.TargetFolder)
-	// get absolute path of URI in local machine
 	sLocalFile := filepath.Join(sLocalFolder, pSelf.URI)
+	sLocalFile = strings.Replace(sLocalFile, "\\", "/", -1)
 	sLocalFolder = path.Dir(sLocalFile)
 	log.Printf("[INF] FComparison.ClearDataFolder() : Clearing... %s for %s", sLocalFolder, pSelf.URI)
+
 	err = os.RemoveAll(sLocalFolder)
 	if err != nil {
 		log.Printf("[WARN] FComparison.ClearDataFolder() : An error occur while clearing %s for %s", sLocalFolder, pSelf.URI)

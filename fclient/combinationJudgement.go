@@ -87,6 +87,7 @@ func (pSelf *CombinationFileJudgement) JudgeDownloadOnly(resFile *ResDownload, s
 	sLocalFolder, _ := filepath.Abs((filepath.Dir("./")))
 	sLocalFolder = filepath.Join(sLocalFolder, sCacheFolder)      // 生成缓存的根目录
 	sLocalFolder = filepath.Join(sLocalFolder, resFile.URI)       // 生成缓存的Resources File目录
+	sLocalFolder = strings.Replace(sLocalFolder, "\\", "/", -1)   // 把'\\'替换成'/',避免下面的path.Dir()出错
 	sLocalFolder = path.Dir(sLocalFolder)                         // 生成缓存的Resources File Root目录
 	sLoadFile := filepath.Join(sLocalFolder, resFile.TYPE+".txt") // 生成某类型数据文件的最后日期备案文件的路径
 	sMkID := strings.Split(resFile.TYPE, ".")[0]
@@ -161,6 +162,7 @@ func (pSelf *CombinationFileJudgement) RecordExpiredDate4DataType(resFile *Downl
 
 	sLocalFolder = filepath.Join(sLocalFolder, sCacheFolder)          // 生成缓存的根目录
 	sLocalFolder = filepath.Join(sLocalFolder, resFile.URI)           // 生成缓存的Resources File目录
+	sLocalFolder = strings.Replace(sLocalFolder, "\\", "/", -1)       // 把'\\'替换成'/',避免下面的path.Dir()出错
 	sLocalFolder = path.Dir(sLocalFolder)                             // 生成缓存的Resources File Root目录
 	sDumpFile := filepath.Join(sLocalFolder, resFile.DataType+".txt") // 生成某类型数据文件的最后日期备案文件的路径
 	sMkID := strings.Split(resFile.DataType, ".")[0]                  // 市场代码
