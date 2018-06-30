@@ -70,7 +70,6 @@ func (pSelf *Minutes60RecordIO) GrapWriter(sFilePath string, nDate int, sSrcFile
 			}
 			sFile = fmt.Sprintf("%s%d", sFilePath, nDate/100*100+nDD) // 如果不是近期，则目标压缩文件，半个月的数据一个文件名(带上下月信息)
 		}
-
 	}
 
 	if objHandles, ok := pSelf.mapFileHandle[sFile]; ok {
