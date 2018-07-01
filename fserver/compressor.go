@@ -11,7 +11,6 @@ import (
 	"compress/zlib"
 	"crypto/md5"
 	"fmt"
-	//"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -124,21 +123,12 @@ func (pSelf *BaseRecordIO) Release() []ResDownload {
 	// 按时间遍历，并提取MD5串
 	for _, sVal := range lstSortKeys {
 		data, err := ioutil.ReadFile(sVal)
-		//objMd5File, err := os.Open(sVal)
 		if err != nil {
 			log.Println("[WARN] BaseRecordIO.Release() : local file is not exist :", sVal)
 			return lstRes
 		}
 
 		/////////////////////// Generate MD5 String
-		/*objMD5Hash := md5.New()
-		if _, err := io.Copy(objMD5Hash, objMd5File); err != nil {
-			log.Printf("[WARN] BaseRecordIO.Release() : failed 2 generate MD5 : %s : %s", sVal, err.Error())
-			objMd5File.Close()
-			return lstRes
-		}
-
-		objMd5File.Close()*/
 		sMD5 := strings.ToLower(fmt.Sprintf("%x" /*objMD5Hash*/, md5.Sum(data)))
 		log.Printf("[INF] BaseRecordIO.Release() : close file = %s, md5 = %s", sVal, sMD5)
 		lstRes = append(lstRes, ResDownload{TYPE: pSelf.DataType, URI: sVal, MD5: sMD5, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
