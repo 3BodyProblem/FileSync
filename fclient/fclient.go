@@ -137,7 +137,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	var nBegin, nEnd int = 0, 0
 	var sCurDataType string = ""
 	var objResourceList ResourceList // uri list object
-	var nMaxDownloadThread int = 2   // 下载任务栈长度(并发下载数)
+	var nMaxDownloadThread int = 1   // 下载任务栈长度(并发下载数)
 	var nMaxExtractThread int = 5    // 解压任务栈长度(并发下载数)
 	var nDispatchTaskCount int = 0
 	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
