@@ -11,7 +11,7 @@ import (
 	"compress/zlib"
 	"crypto/md5"
 	"fmt"
-	"io"
+	//"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -110,7 +110,6 @@ func (pSelf *BaseRecordIO) Initialize() bool {
  * @note 		函数按文件路径排序，日期靠前的文件在前面，有助于生成的“资源列表”是有时序性的，方便解压的时候，按时间顺序恢复行情数据
  */
 func (pSelf *BaseRecordIO) Release() []ResDownload {
-	var byteMD5 []byte
 	var lstRes []ResDownload
 	var lstSortKeys []string
 	log.Println("[INF] BaseRecordIO.Release() : flushing files 2 disk, count =", len(pSelf.mapFileHandle))
@@ -120,24 +119,27 @@ func (pSelf *BaseRecordIO) Release() []ResDownload {
 		lstSortKeys = append(lstSortKeys, sPath)
 	}
 
+	// 输出的资源列表排序： 必须是时间序，这个时间序将会下发给同步client.exe依赖
 	sort.Strings(lstSortKeys)
-
 	// 按时间遍历，并提取MD5串
 	for _, sVal := range lstSortKeys {
-		objMd5File, err := os.Open(sVal)
+		data, err := ioutil.ReadFile(sVal)
+		//objMd5File, err := os.Open(sVal)
 		if err != nil {
 			log.Println("[WARN] BaseRecordIO.Release() : local file is not exist :", sVal)
 			return lstRes
 		}
-		defer objMd5File.Close()
+
 		/////////////////////// Generate MD5 String
-		objMD5Hash := md5.New()
+		/*objMD5Hash := md5.New()
 		if _, err := io.Copy(objMD5Hash, objMd5File); err != nil {
 			log.Printf("[WARN] BaseRecordIO.Release() : failed 2 generate MD5 : %s : %s", sVal, err.Error())
+			objMd5File.Close()
 			return lstRes
 		}
 
-		sMD5 := strings.ToLower(fmt.Sprintf("%x", objMD5Hash.Sum(byteMD5)))
+		objMd5File.Close()*/
+		sMD5 := strings.ToLower(fmt.Sprintf("%x" /*objMD5Hash*/, md5.Sum(data)))
 		log.Printf("[INF] BaseRecordIO.Release() : close file = %s, md5 = %s", sVal, sMD5)
 		lstRes = append(lstRes, ResDownload{TYPE: pSelf.DataType, URI: sVal, MD5: sMD5, UPDATE: time.Now().Format("2006-01-02 15:04:05")})
 	}
@@ -332,8 +334,9 @@ func compressFile(sDestFile string, sSrcFile string, sRecursivePath string, oFil
 
 			hdr.Size = int64(len(bData))
 			hdr.Mode = int64(oFileInfo.Mode())
-			hdr.ModTime = oFileInfo.ModTime()
-			err = pTarWriter.WriteHeader(hdr) // 写压缩数据头
+			//< 注意： hdr.ModTime本应填被压文件修改时间，但为方便资源同步时的md5比较(因文件修改时间会被算在md5串中)，故使用固定时间
+			hdr.ModTime = time.Date(2018, time.Month(1), 2, 21, 6, 9, 0, time.Local) //oFileInfo.ModTime()
+			err = pTarWriter.WriteHeader(hdr)                                        // 写压缩数据头
 			if err != nil {
 				log.Println("[INF] Compressor.compressFile() : cannot write tar header 2 file :", sDestFile, err.Error())
 				return false
