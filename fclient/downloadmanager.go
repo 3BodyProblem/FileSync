@@ -10,6 +10,7 @@ import (
 	"os"
 	//"runtime/pprof"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -200,7 +201,9 @@ type DownloadTask struct {
  * @note 		给每个下载任务标一个时序号，然后解压的时候，就按这个顺序来一个一个的解压(保证该类别内资源文件的解压顺序)
  */
 func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTargetFolder string, lstDownloadTask []ResDownload) {
-	var nExtractedFileNum int = 0 // 在本资源文件类别中，已经解压文件的数量
+	var sMkID string = strings.Split(sDataType, ".")[0]     // 市场简称
+	var sFileType string = strings.Split(sDataType, ".")[1] // 数据类型
+	var nExtractedFileNum int = 0                           // 在本资源文件类别中，已经解压文件的数量
 	///// 跳过已经下载过的任务，若下载过的任务表中间有“脏数据”则清空这个类型的资源后全新下载 /////
 	_, lstSkipDownload, lstValidDownload := pSelf.ClearInvalidHistorayCacheAndData(sTargetFolder, lstDownloadTask)
 	if len(lstSkipDownload) > 0 {
@@ -242,7 +245,7 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
 	}
 
 	runtime.GC()
-	log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Release Downloader] %s : CompleteCount = %d, TotalCount = %d", sDataType, nExtractedFileNum, len(lstSkipDownload)+len(lstValidDownload))
+	log.Printf("[INF] FileSyncClient.DownloadResourcesByCategory() : [Release Downloader] %s : CompleteCount = %d, TotalCount = %d, (%s.%s)", sDataType, nExtractedFileNum, len(lstSkipDownload)+len(lstValidDownload), sMkID, sFileType)
 }
 
 ///< ---------------------- [Pivate 方法] -----------------------------
@@ -330,7 +333,7 @@ func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo Downl
 			///////////// 解压下载的资源文件 ///////////////////////////////////////
 			if false == GlobalCombinationFileJudgement.IsDownloadOnly(objResInfo.URI) {
 				objUnzip := Uncompress{TargetFolder: sTargetFolder}
-				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI) {
+				if false == objUnzip.Unzip(objResInfo.LocalPath, objResInfo.URI, objResInfo.DataType) {
 					os.Remove(objResInfo.LocalPath)
 					log.Println("[ERROR] FileSyncClient.ExtractResData() :  error in uncompression : ", objResInfo.LocalPath)
 					os.Exit(-100)

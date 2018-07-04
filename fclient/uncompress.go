@@ -19,8 +19,13 @@ import (
 	"time"
 )
 
+var (
+	objCacheFileTable BufferFileTable // 全市场行情数据的落盘缓存[path,data]
+)
+
 // Package Initialization
 func init() {
+	objCacheFileTable.Initialize()
 }
 
 ///////////////////////////////////// HTTP Client Engine Stucture/Class
@@ -30,17 +35,19 @@ type Uncompress struct {
 
 ///////////////////////////////////// [OutterMethod]
 // [method] Unzip
-func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
+func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath, sDataType string) bool {
 	var err error
-	var pTarFile *os.File = nil
+	var objBufFile I_BufferFile
 	var sLastFilePath string = ""
 	var sLocalFolder string = path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath))
 	var objMapFolder map[string]bool = make(map[string]bool, 1024*16)
+	var sMkID string = strings.Split(sDataType, ".")[0]
+	var sFileType string = strings.Split(sDataType, ".")[1]
 	// open zip file
 	if "windows" == runtime.GOOS {
 		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
 	}
-
+	//////////// 对不同的文件类型，使用不同的写文件方式 ////////////////////////
 	nFileOpenMode := os.O_RDWR | os.O_CREATE
 	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") && false == strings.Contains(sSubPath, "MIN1_TODAY") && false == strings.Contains(sSubPath, "STATIC.") && false == strings.Contains(sSubPath, "WEIGHT.") {
 		nFileOpenMode |= os.O_APPEND
@@ -71,15 +78,14 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 		if err == io.EOF {
 			break // End of tar archive
 		}
-		// Check if it is diretory or file
+
 		if hdr.Typeflag != tar.TypeDir {
-			// Get files from archive
-			//////////////////////////// Create Folder ////////////////////////////////
 			sTargetFile := filepath.Join(sLocalFolder, hdr.Name)
 			_, sSplitFileName := path.Split(sTargetFile)
 			if strings.Contains(sSplitFileName, ".") == false {
 				continue
 			}
+			//////////////////////////// 对Static文件，需要去掉路径和文件句中的日期信息
 			nStaticIndex := strings.LastIndex(sTargetFile, "STATIC20")
 			if nStaticIndex > 0 {
 				nYear := time.Now().Year()
@@ -88,6 +94,8 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 					sTargetFile = sTargetFile[:nStaticIndex2] + "STATIC.csv"
 				}
 			}
+
+			//////////////////////////// 预先创建好目录结构 /////////////////////////
 			sTargetFolder := path.Dir(sTargetFile)
 			if "windows" == runtime.GOOS {
 				sTargetFolder = sTargetFile[:strings.LastIndex(sTargetFile, "\\")+1]
@@ -103,58 +111,29 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath string) bool {
 				objMapFolder[sTargetFolder] = true
 			}
 
-			///////////////////////// Open File ///////////////////////////////////////
+			///////////////////////// 关闭旧文件/打开新文件 /////////////////////////
 			if sLastFilePath != sTargetFile {
-				if pTarFile != nil {
-					pTarFile.Close()
-					pTarFile = nil
-				}
-
-				pTarFile, err = os.OpenFile(sTargetFile, nFileOpenMode, 0644)
-				if err != nil {
-					log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot create tar file, file name =", sTargetFile, sLocalFolder, err.Error())
+				objBufFile = objCacheFileTable.Open(sMkID, sFileType, sTargetFile, nFileOpenMode)
+				if nil == objBufFile {
 					return false
 				}
+
 				sLastFilePath = sTargetFile
-				objStatus, _ := pTarFile.Stat()
-				///////////////////////// Write data to file ///////////////////////////////
-				if objStatus.Size() < 10 {
-					/////////////////// Check Title In File ///////////////////////
-					sTargetFile = strings.Replace(sTargetFile, "\\", "/", -1)
-					if strings.LastIndex(sTargetFile, "/MIN/") > 0 || strings.LastIndex(sTargetFile, "/MIN1_TODAY/") > 0 {
-						pTarFile.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
-					}
-					if strings.LastIndex(sTargetFile, "/MIN5/") > 0 {
-						pTarFile.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
-					}
-					if strings.LastIndex(sTargetFile, "/MIN60/") > 0 {
-						pTarFile.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
-					}
-					if strings.LastIndex(sTargetFile, "/DAY/") > 0 {
-						pTarFile.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
-					}
-					if strings.LastIndex(sTargetFile, "/STATIC/") > 0 {
-						pTarFile.WriteString("code,name,lotsize,contractmult,contractunit,startdate,enddate,xqdate,deliverydate,expiredate,underlyingcode,underlyingname,optiontype,callorput,exercisepx\n")
-					}
-				}
 			}
 
-			_, err = io.Copy(pTarFile, objTarReader)
-			if err != nil {
-				log.Println("[ERR] Uncompress.Unzip() : [Uncompressing] cannot write tar file, file name =", sTargetFile, sLocalFolder, err.Error())
-				if pTarFile != nil {
-					pTarFile.Close()
+			///////////////////////// 写数据到文件 //////////////////////////////////
+			if objBufFile != nil {
+				if false == objBufFile.WriteFrom(objTarReader) {
+					objBufFile.Close()
+					return false
 				}
-				return false
 			}
 		}
 	}
 
-	if pTarFile != nil {
-		pTarFile.Close()
+	if objBufFile != nil {
+		objBufFile.Close()
 	}
 
 	return true
 }
-
-///////////////////////////////////// [InnerMethod]

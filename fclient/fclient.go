@@ -213,6 +213,7 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 		}
 	}
 
+	objCacheFileTable.FlushBuffer2File()
 	pSelf.DumpProgress(0)
 	log.Println("[INF] FileSyncClient.DoTasks() : ................ Mission Completed ................... ")
 	return true
