@@ -47,6 +47,14 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath, sDataType string) bool {
 	if "windows" == runtime.GOOS {
 		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
 	}
+
+	defer func(refBufFile I_BufferFile) {
+		if refBufFile != nil {
+			refBufFile.Close()
+			refBufFile = nil
+		}
+	}(objBufFile)
+
 	//////////// 对不同的文件类型，使用不同的写文件方式 ////////////////////////
 	nFileOpenMode := os.O_RDWR | os.O_CREATE
 	if false == strings.Contains(sSubPath, "HKSE") && false == strings.Contains(sSubPath, "QLFILE") && false == strings.Contains(sSubPath, "MIN1_TODAY") && false == strings.Contains(sSubPath, "STATIC.") && false == strings.Contains(sSubPath, "WEIGHT.") {
@@ -110,7 +118,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath, sDataType string) bool {
 				}
 				objMapFolder[sTargetFolder] = true
 			}
-
 			///////////////////////// 关闭旧文件/打开新文件 /////////////////////////
 			if sLastFilePath != sTargetFile {
 				objBufFile = objCacheFileTable.Open(sMkID, sFileType, sTargetFile, nFileOpenMode)
@@ -120,19 +127,13 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath, sDataType string) bool {
 
 				sLastFilePath = sTargetFile
 			}
-
 			///////////////////////// 写数据到文件 //////////////////////////////////
 			if objBufFile != nil {
 				if false == objBufFile.WriteFrom(objTarReader) {
-					objBufFile.Close()
 					return false
 				}
 			}
 		}
-	}
-
-	if objBufFile != nil {
-		objBufFile.Close()
 	}
 
 	return true
