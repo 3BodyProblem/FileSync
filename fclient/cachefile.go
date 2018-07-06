@@ -11,6 +11,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -73,10 +75,10 @@ type BufferFile struct {
  * @return			操作是否成功, true :成功
  */
 func (pSelf *BufferFile) Open(sFilePath string, nFileOpenMode int) bool {
-	var err error
-
 	pSelf.Close() // 先关闭文件
 	if nil == pSelf.FilePtr {
+		var err error
+
 		pSelf.FilePtr, err = os.OpenFile(sFilePath, nFileOpenMode, 0644)
 		if err != nil {
 			log.Println("[ERR] BufferFile.Open() : cannot create/open file, path =", sFilePath, err.Error())
@@ -134,7 +136,7 @@ func (pSelf *BufferFile) WriteFrom(pTarFile *tar.Reader) bool {
 			log.Println("[ERR] BufferFile.Write() : cannot write to buffer, MkID & Type =", pSelf.MkID, pSelf.DataType, err.Error(), pSelf.FilePtr)
 		}
 
-		if pSelf.FileBuffer.Len() > 1024*60 { // 设置： 日线缓存过25k时才写盘
+		if pSelf.FileBuffer.Len() > 1024*25 { // 设置： 日线缓存过25k时才写盘
 			pSelf.FilePtr.Write(pSelf.FileBuffer.Bytes()) // 将缓存中的数据全部写文件
 			pSelf.FileBuffer.Reset()                      // 写完缓存中的数据后，清空缓存
 		}
@@ -187,6 +189,7 @@ func (pSelf *BufferFile) Flush2File(sFilePath string) bool {
 type BufferFileTable struct {
 	objLock           *sync.Mutex             // 资源清单锁
 	objCacheFileTable map[string]I_BufferFile // 全市场行情数据的落盘缓存[path,data]
+	objMapFolder      map[string]bool         // 创建过的子目录表
 }
 
 /**
@@ -195,6 +198,7 @@ type BufferFileTable struct {
 func (pSelf *BufferFileTable) Initialize() bool {
 	pSelf.objLock = new(sync.Mutex)
 	pSelf.objCacheFileTable = make(map[string]I_BufferFile)
+	pSelf.objMapFolder = make(map[string]bool, 1024*16)
 
 	return true
 }
@@ -208,17 +212,31 @@ func (pSelf *BufferFileTable) Initialize() bool {
  * @return			操作是否成功, true :成功
  */
 func (pSelf *BufferFileTable) Open(sMkID, sFileType, sFilePath string, nFileOpenMode int) I_BufferFile {
-	var objBufFile I_BufferFile
-
 	pSelf.objLock.Lock()
 	defer pSelf.objLock.Unlock()
+	//////////////////////////// 预先创建好目录结构 /////////////////////////
+	sTargetFolder := path.Dir(sFilePath)
+	if "windows" == runtime.GOOS {
+		sTargetFolder = sFilePath[:strings.LastIndex(sFilePath, "\\")+1]
+	}
+
+	if _, ok := pSelf.objMapFolder[sTargetFolder]; false == ok {
+		err := os.MkdirAll(sTargetFolder, 0644)
+		if err != nil {
+			log.Println("[ERR] BufferFileTable.Open() : cannot build target folder: ", sTargetFolder, err.Error())
+			return nil
+		}
+		pSelf.objMapFolder[sTargetFolder] = true
+	}
+	/////////////////////////// 打开文件 //////////////////////////////////
 	if _, ok := pSelf.objCacheFileTable[sFilePath]; false == ok {
 		objNewBuffFile := BufferFile{MkID: sMkID, DataType: sFileType, FilePtr: nil}
 		pSelf.objCacheFileTable[sFilePath] = &objNewBuffFile // 创建未打开过的缓存文件并设置到Map
 	}
 
-	objBufFile = pSelf.objCacheFileTable[sFilePath]
+	objBufFile := pSelf.objCacheFileTable[sFilePath]
 	if false == objBufFile.Open(sFilePath, nFileOpenMode) {
+		log.Println("[ERR] BufferFileTable.Open() : cannot open/create file: ", sFilePath)
 		return nil
 	}
 
@@ -226,7 +244,7 @@ func (pSelf *BufferFileTable) Open(sMkID, sFileType, sFilePath string, nFileOpen
 }
 
 /**
- * @brief			刷数据到文件
+ * @brief			刷缓存中的最后数据到文件
  * @return			true			成功
  * @author			barry
  */
