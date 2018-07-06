@@ -55,6 +55,14 @@ type I_BufferFile interface {
 	Flush2File(sFilePath string) bool
 }
 
+var (
+	sMin1Title   string = "date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n"
+	sMin5Title   string = "date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n"
+	sMin60Title  string = "date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n"
+	sDay1Title   string = "date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n"
+	sStaticTitle string = "code,name,lotsize,contractmult,contractunit,startdate,enddate,xqdate,deliverydate,expiredate,underlyingcode,underlyingname,optiontype,callorput,exercisepx\n"
+)
+
 /**
  * @class			BufferFile
  * @brief			缓存文件类
@@ -89,19 +97,19 @@ func (pSelf *BufferFile) Open(sFilePath string, nFileOpenMode int) bool {
 		if objStatus.Size() < 10 {
 			sFilePath = strings.Replace(sFilePath, "\\", "/", -1)
 			if strings.LastIndex(sFilePath, "/MIN/") > 0 || strings.LastIndex(sFilePath, "/MIN1_TODAY/") > 0 {
-				pSelf.FilePtr.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				pSelf.FilePtr.WriteString(sMin1Title)
 			}
 			if strings.LastIndex(sFilePath, "/MIN5/") > 0 {
-				pSelf.FilePtr.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				pSelf.FilePtr.WriteString(sMin5Title)
 			}
 			if strings.LastIndex(sFilePath, "/MIN60/") > 0 {
-				pSelf.FilePtr.WriteString("date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				pSelf.FilePtr.WriteString(sMin60Title)
 			}
 			if strings.LastIndex(sFilePath, "/DAY/") > 0 {
-				pSelf.FilePtr.WriteString("date,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n")
+				pSelf.FilePtr.WriteString(sDay1Title)
 			}
 			if strings.LastIndex(sFilePath, "/STATIC/") > 0 {
-				pSelf.FilePtr.WriteString("code,name,lotsize,contractmult,contractunit,startdate,enddate,xqdate,deliverydate,expiredate,underlyingcode,underlyingname,optiontype,callorput,exercisepx\n")
+				pSelf.FilePtr.WriteString(sStaticTitle)
 			}
 		}
 	}

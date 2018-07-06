@@ -46,8 +46,6 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath, sDataType string) bool {
 	var objBufFile I_BufferFile                                                     // 输出文件句柄接口
 	var sLastFilePath string = ""                                                   // 最后一次写入文件的路径，用来作为判断是否要打开新文件的依据
 	var sLocalFolder string = path.Dir(filepath.Join(pSelf.TargetFolder, sSubPath)) // 输出文件目录
-	var sMkID string = strings.Split(sDataType, ".")[0]                             // 市场编号
-	var sFileType string = strings.Split(sDataType, ".")[1]                         // 文件数据类型
 
 	if "windows" == runtime.GOOS {
 		sLocalFolder = "./" + filepath.Join(pSelf.TargetFolder, sSubPath[:strings.LastIndex(sSubPath, "/")])
@@ -112,6 +110,8 @@ func (pSelf *Uncompress) Unzip(sZipSrcPath, sSubPath, sDataType string) bool {
 					objBufFile = nil
 				}
 
+				var sMkID string = strings.Split(sDataType, ".")[0]     // 市场编号
+				var sFileType string = strings.Split(sDataType, ".")[1] // 文件数据类型
 				objBufFile = objCacheFileTable.Open(sMkID, sFileType, sTargetFile, nFileOpenMode)
 				if nil == objBufFile {
 					return false
