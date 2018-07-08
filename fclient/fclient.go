@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	//"runtime/pprof"
+	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -129,6 +129,15 @@ func (pSelf *FileSyncClient) Initialize() bool {
 	return true
 }
 
+func dumpMemProfile() {
+fm, err := os.OpenFile("./mem.out", os.O_RDWR|os.O_CREATE, 0644)
+if err != nil {
+    log.Fatal(err)
+}
+pprof.WriteHeapProfile(fm)
+fm.Close()
+}
+
 /**
  * @brief		根据输入参数执行下载任务
  * @param[in]	sTargetFolder		下载资源文件的根目录
@@ -142,12 +151,14 @@ func (pSelf *FileSyncClient) DoTasks(sTargetFolder string) bool {
 	var nDispatchTaskCount int = 0
 	log.Println("[INF] FileSyncClient.DoTasks() : .................. Executing Tasks .................. ")
 	/////// 本程序进行性能测试的代码，用于找出哪个函数最慢 /////////////////
-	/*f, err := os.Create("performace_test_client.dat")
+	f, err := os.Create("performace_test_client.dat")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	defer dumpMemProfile()
 	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()*/
+	defer pprof.StopCPUProfile()
 	pSelf.DumpProgress(0)
 	if false == pSelf.login2Server() { ////////////////////// 登录到服务器
 		return false
@@ -236,7 +247,7 @@ func (pSelf *FileSyncClient) FetchResource(sDataType, sUri, sMD5, sDateTime stri
 		if pObjPanic := recover(); pObjPanic != nil { // 异常恢复，以至于程序不会异常中断
 			sLocalPath = ""
 			nTaskStatus = ST_Error
-			log.Println("[ERR] FileSyncClient.FetchResource() : [panic] exception --> ", sUri, pObjPanic)
+			log.Println("[ERR] FileSyncClient.FetchResource() : [Panic] exception --> ", sUri, pObjPanic)
 			return
 		}
 	}()

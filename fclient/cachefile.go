@@ -55,7 +55,7 @@ type I_BufferFile interface {
 	Flush2File(sFilePath string) bool
 }
 
-var (
+const (
 	sMin1Title   string = "date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n"
 	sMin5Title   string = "date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n"
 	sMin60Title  string = "date,time,openpx,highpx,lowpx,closepx,settlepx,amount,volume,openinterest,numtrades,voip\n"

@@ -8,7 +8,6 @@ package fclient
 import (
 	"log"
 	"os"
-	//"runtime/pprof"
 	"runtime"
 	"strings"
 	"sync"
@@ -363,7 +362,7 @@ func (pSelf *DownloadTask) ExtractResData(sTargetFolder string, objResInfo Downl
  */
 func (pSelf *DownloadTask) StartDataSafetyDownloader(sDataType, sUri, sMD5, sDateTime string, nSeqNo int, objParallelDownloadChannel chan int, objResFileChannel chan DownloadStatus, nRetryTimes int) {
 	for n := 0; n < nRetryTimes; n++ { // 资源下载、解压（带任务的失败重试尝试循环）
-		if nTaskStatus, sLocalPath := pSelf.I_Downloader.FetchResource(sDataType, sUri, sMD5, sDateTime); nTaskStatus != ST_Error {
+		if nTaskStatus, sLocalPath := pSelf.I_Downloader.FetchResource(sDataType, sUri, sMD5, sDateTime); nTaskStatus == ST_Completed {
 			pSelf.I_CacheMgr.NewResource(sUri, sLocalPath, nSeqNo)
 
 			for {
@@ -386,7 +385,6 @@ func (pSelf *DownloadTask) StartDataSafetyDownloader(sDataType, sUri, sMD5, sDat
 			objResFileChannel <- DownloadStatus{MD5: sMD5, UPDATE: sDateTime, DataType: sDataType, URI: sUri, Status: nTaskStatus, LocalPath: sLocalPath, SeqNo: nSeqNo} // 将下载的资源文件描述，压入解压任务栈
 			return
 		} else {
-			pSelf.I_CacheMgr.NewResource(sUri, sLocalPath, nSeqNo)
 			log.Printf("[ERR] FileSyncClient.StartDataSafetyDownloader() : [×]-[ReloadTimes=%d] %s:%d->%d => %s", n+1, sDataType, pSelf.LastSeqNo, nSeqNo, sUri)
 			time.Sleep(time.Second * 3)
 		}
