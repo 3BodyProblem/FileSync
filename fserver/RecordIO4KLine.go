@@ -453,7 +453,7 @@ type Day1RecordIO struct {
 }
 
 func (pSelf *Day1RecordIO) GetCompressLevel() int {
-	return zlib.BestSpeed
+	return zlib.BestCompression
 }
 
 func (pSelf *Day1RecordIO) GrapWriter(sFilePath string, nDate int, sSrcFile string) *tar.Writer {

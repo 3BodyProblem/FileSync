@@ -142,7 +142,7 @@ func (pSelf *BaseRecordIO) Release() []ResDownload {
  * @brief		默认压缩级别设定
  */
 func (pSelf *BaseRecordIO) GetCompressLevel() int {
-	return zlib.DefaultCompression
+	return zlib.BestCompression //.DefaultCompression
 }
 
 /**
