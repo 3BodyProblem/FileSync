@@ -229,7 +229,7 @@ func (pSelf *BufferFileTable) Open(sMkID, sFileType, sFilePath string, nFileOpen
 	}
 
 	if _, ok := pSelf.objMapFolder[sTargetFolder]; false == ok {
-		err := os.MkdirAll(sTargetFolder, 0644)
+		err := os.MkdirAll(sTargetFolder, 0755)
 		if err != nil {
 			log.Println("[ERR] BufferFileTable.Open() : cannot build target folder: ", sTargetFolder, err.Error())
 			return nil
