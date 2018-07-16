@@ -255,19 +255,29 @@ func (pSelf *DownloadTask) DownloadResourcesByCategory(sDataType string, sTarget
  * @note		要么发现出现在中间位置（历史位置）的“脏数据”出错全清，要么返回待下载资源开始的位置索引
  */
 func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string, lstDownloadTask []ResDownload) (bool, []ResDownload, []ResDownload) {
-	var bIsIdentical bool = false          // 服务器资源文件和本地缓存是否一致的标识
-	var bHaveDiscrepancy bool = false      // 是否有不一致的缓存文件
-	var lstValidDownload []ResDownload     // 返回的需要下载的任务列表
-	var lstSkipDownload []ResDownload      // 返回的不要下载的任务列表
-	var lstEmptySkipDownload []ResDownload // 返回的不要下载的空任务列表
+	var bIsIdentical bool = false                // 服务器资源文件和本地缓存是否一致的标识
+	var bHaveDiscrepancy bool = false            // 是否有不一致的缓存文件
+	var lstValidDownload []ResDownload           // 返回的需要下载的任务列表
+	var lstSkipDownload []ResDownload            // 返回的不要下载的任务列表
+	var lstEmptySkipDownload []ResDownload       // 返回的不要下载的空任务列表
+	var nFileStatus FileDescType = FD_IsNotExist // 文件存在状态
+	var nFS FileDescType = FD_IsNotExist
 
 	for _, objRes := range lstDownloadTask {
 		var objFCompare FComparison = FComparison{TargetFolder: sTargetFolder, URI: objRes.URI, MD5: objRes.MD5, DateTime: objRes.UPDATE} // 待下载资源与本地缓存文件的差异比较对象
-		bIsIdentical, _ = objFCompare.Compare()                                                                                           // 比较资源文件和本地缓存中的是否一致或存在
+		bIsIdentical, nFS = objFCompare.Compare()                                                                                         // 比较资源文件和本地缓存中的是否一致或存在
+		if nFileStatus == FD_IsNotExist {
+			nFileStatus = nFS
+		}
 
 		/////////////////// 判断是否为"新合并资料包": 只需要下载，不需要解压的
 		if false == bIsIdentical {
-			lstValidDownload = append(lstValidDownload, objRes)
+			lstValidDownload = append(lstValidDownload, objRes)                             // 两边不同就需要下载
+			if len(lstValidDownload) == len(lstDownloadTask) && nFileStatus == FD_IsExist { // 如果两边不匹配的文件数==文件列表长度，则说明全部不同，需要全删除全量下载
+				log.Println("[INF] FileSyncClient.ClearInvalidHistorayCacheAndData() : [WARNING] All Data Files r Invalid & Deleting! ------> ", objRes.TYPE)
+				objFCompare.ClearCacheFolder()
+				objFCompare.ClearDataFolder()
+			}
 			if true == GlobalCombinationFileJudgement.JudgeDownloadOnly(&objRes, CacheFolder) {
 				continue // 只需要下载不用解压的(新合并生成的)文件,加入下载队列
 			}
@@ -275,7 +285,7 @@ func (pSelf *DownloadTask) ClearInvalidHistorayCacheAndData(sTargetFolder string
 
 		////////////////// 在已经下载的资源中，如果发现中间位置有“脏资源”，需要清空该分类下的所有缓存和文件
 		if true == bIsIdentical {
-			if true == bHaveDiscrepancy {
+			if true == bHaveDiscrepancy { // 在匹配资源前有“脏资源”，则需要全清该分类下的数据
 				objFCompare.ClearCacheFolder()
 				objFCompare.ClearDataFolder()
 				return false, lstEmptySkipDownload, lstDownloadTask // 有“脏资源”，需要清空该分类下的所有缓存和文件

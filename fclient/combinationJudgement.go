@@ -76,12 +76,12 @@ func (pSelf *CombinationFileJudgement) IsDownloadOnly(sURI string) bool {
 }
 
 /**
-* @brief		判断某资源文件是否是只需下载不用解压的 新合并资源文件
-* @param[in]	resFile 		待下载资源信息
-* @param[in]	sCacheFolder	缓存根目录
-* @return		true			是新合并的资源文件，只要下载即可
+ * @brief		判断某资源文件是否是只需下载不用解压的 "新合并资源文件"(即，按年存的文件不包含今年，比如刚跨年后，之前的今年数据就合并出了新的按年存放的资料包，但其实这个包不需要被解压)
+ * @param[in]	resFile 		待下载资源信息
+ * @param[in]	sCacheFolder	缓存根目录
+ * @return		true			是新合并的资源文件，只要下载即可
 				false			需要下载后，再解压
-* @note		对于判定为只需要下载的文件，会被记录到 “只下载” 列表中
+ * @note		对于判定为只需要下载的文件，会被记录到 “只下载” 列表中
 */
 func (pSelf *CombinationFileJudgement) JudgeDownloadOnly(resFile *ResDownload, sCacheFolder string) bool {
 	sLocalFolder, _ := filepath.Abs((filepath.Dir("./")))
@@ -102,7 +102,7 @@ func (pSelf *CombinationFileJudgement) JudgeDownloadOnly(resFile *ResDownload, s
 		if nFileDate > 0 && nExpiredDate > 0 { // 最后几天代表日数据的文件精确到月/日
 			var objToday time.Time = time.Now()
 
-			if nFileDate%100 == 0 && (objToday.Year()-1) == nFileDate/10000 {
+			if nFileDate%10000 == 0 && (objToday.Year()-1) == nFileDate/10000 {
 				/////////////// 如果文件名是"前一年"的情况： 数据文件日期只代表到年，所以后面的月和日都为0 --> 需要取到该年最后一个工作日的日期后进行比较
 				objDateOfLastYear := time.Date(objToday.Year(), 1, 1, 8, 1, 2, 0, time.Local)
 
@@ -115,7 +115,7 @@ func (pSelf *CombinationFileJudgement) JudgeDownloadOnly(resFile *ResDownload, s
 						continue
 					}
 				}
-
+				// 此时的objDateOfLastYear为前一年的最后一个交易日，并计算出这一年最后一个需要下载的文件名日期(nFileDate)，以此判断是否已经下载全
 				if objDateOfLastYear.Year()*10000 == nFileDate { // 新合并生成的去年的资源包，因为文件名不含月/日，需要补足这块信息后再比较
 					nFileDate = objDateOfLastYear.Year()*10000 + int(objDateOfLastYear.Month())*100 + objDateOfLastYear.Day()
 					log.Printf("[INF] CombinationFileJudgement.JudgeDownloadOnly() : New Merged File Of Last Year (%s) %s, Gen File Date = %d", objDateOfLastYear.Format("2006-01-02 15:04:05"), objDateOfLastYear.Weekday().String(), nFileDate)

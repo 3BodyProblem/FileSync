@@ -82,6 +82,10 @@ func (pSelf *FComparison) Compare() (bool, FileDescType) {
 }
 
 func (pSelf *FComparison) ClearCacheFolder() bool {
+	if strings.Contains(pSelf.URI, "Participant.") == true {
+		return true
+	}
+
 	// get absolute path of current working folder && build it
 	sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
 	if err != nil {
@@ -108,6 +112,10 @@ func (pSelf *FComparison) ClearCacheFolder() bool {
 }
 
 func (pSelf *FComparison) ClearDataFolder() bool {
+	if strings.Contains(pSelf.URI, "Participant.") == true {
+		return true
+	}
+
 	// get absolute path of current working folder && build it
 	sLocalFolder, err := filepath.Abs((filepath.Dir("./")))
 	if err != nil {
